@@ -1,3 +1,6 @@
 /.idea/
 /.gradle/
 /build/
+
+/src/main/java/com/tsarev/fiotcher/utilities/Bonus.java
+/src/main/java/com/tsarev/fiotcher/utilities/LogoPrint.java
