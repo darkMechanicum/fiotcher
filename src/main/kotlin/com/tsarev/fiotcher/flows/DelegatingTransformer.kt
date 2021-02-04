@@ -3,11 +3,11 @@ package com.tsarev.fiotcher.flows
 import java.util.concurrent.*
 
 /**
- * Resource transformer, that splits event to multiple lesser ones.
+ * Resource transformer, that delegates on how to split and publish.
  */
-class SplittingTransformer<FromT: Any, ToT: Any>(
+class DelegatingTransformer<FromT: Any, ToT: Any>(
     executor: Executor,
-    private val transform: (FromT) -> Collection<ToT>,
+    private val transform: (FromT, (ToT) -> Unit) -> Unit,
     private val chained: ChainingListener<ToT>
 ) : CommonListener<FromT>(), Flow.Processor<FromT, ToT> {
 
@@ -22,9 +22,7 @@ class SplittingTransformer<FromT: Any, ToT: Any>(
     }
 
     override fun doOnNext(item: FromT) {
-        println("hey!")
-        val transformed = transform(item)
-        transformed.forEach { destination.submit(it) }
+        transform(item) { destination.submit(it) }
     }
 
     override fun stop(force: Boolean): Future<*> {

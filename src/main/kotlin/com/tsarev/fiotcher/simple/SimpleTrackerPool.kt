@@ -139,15 +139,31 @@ class SimpleTrackerPool : TrackerPool, TrackerListenerRegistry {
     override fun registerListener(listener: ChainingListener<TrackerEventBunch>, key: String?) {
         checkIsStopping()
         val wrapped = key.wrapKey
-        if (registeredListeners.putIfAbsent(wrapped, listener) != null) throw TrackerListenerAlreadyRegistered(wrapped)
-        getAggregator(wrapped).subscribe(listener)
+        // Wrap listener to allow [SubmissionPublisher] register it twice if need (after de registration).
+        val wrappedListener = wrapListener(listener)
+        if (registeredListeners.putIfAbsent(wrapped, wrappedListener) != null) throw TrackerListenerAlreadyRegistered(wrapped)
+        getAggregator(wrapped).subscribe(wrappedListener)
     }
+
+    /**
+     * Wrap to hide possible 'equal by reference' listener inside.
+     */
+    private fun <ResourceT : Any> wrapListener(
+        listener: ChainingListener<ResourceT>
+    ) = WrappedListener(listener)
+
+    /**
+     * Static class to avoid hidden inner references.
+     */
+    private class WrappedListener<ResourceT: Any>(
+        listener: ChainingListener<ResourceT>
+    ) : ChainingListener<ResourceT> by listener
 
     override fun deRegisterListener(key: String?, force: Boolean) {
         checkIsStopping()
         val wrapped = key.wrapKey
         registeredListeners.computeIfPresent(wrapped) { _, old ->
-            old.stop(true)
+            old.stop(true).get()
             null
         }
     }

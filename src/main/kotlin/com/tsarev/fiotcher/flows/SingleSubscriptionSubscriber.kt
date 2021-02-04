@@ -22,15 +22,17 @@ abstract class SingleSubscriptionSubscriber<T> : Flow.Subscriber<T>, Stoppable {
     private var _subscription: Flow.Subscription? = null
 
     /**
-     * Stop by cancelling each subscription.
+     * Stop by cancelling subscription.
      */
     override fun stop(force: Boolean): Future<*> {
         return if (force) {
             CompletableFuture.runAsync {
                 _subscription?.cancel()
+                _subscription = null
             }
         } else {
             _subscription?.cancel()
+            _subscription = null
             CompletableFuture.completedFuture(Unit)
         }
     }
@@ -51,7 +53,7 @@ abstract class SingleSubscriptionSubscriber<T> : Flow.Subscriber<T>, Stoppable {
     }
 
     override fun onError(throwable: Throwable?) {
-        // no-op
+        throwable?.printStackTrace()
     }
 
     override fun onComplete() {

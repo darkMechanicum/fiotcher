@@ -55,7 +55,7 @@ class Aggregator<ResourceT: Any>(
     }
 
     override fun onError(throwable: Throwable?) {
-        // no-op
+        throwable?.printStackTrace()
     }
 
     override fun onComplete() {

@@ -25,17 +25,28 @@ interface ChainingListener<ResourceT : Any> : Flow.Subscriber<ResourceT>, Stoppa
     /**
      * Create proxy listener, that will handle pre converted events in new queue.
      */
-    fun <ToT : Any> chainFrom(
+    fun <FromT : Any> chainFrom(
         executor: Executor,
-        transformer: (ToT) -> ResourceT
-    ): ChainingListener<ToT> = splitFrom(executor) { listOf(transformer(it)) }
+        transformer: (FromT) -> ResourceT?
+    ): ChainingListener<FromT> = splitFrom(executor) { listOf(transformer(it)) }
 
     /**
      * Create proxy listener, that will handle split events in new queue.
      */
-    fun <ToT : Any> splitFrom(
+    fun <FromT : Any> splitFrom(
         executor: Executor,
-        transformer: (ToT) -> Collection<ResourceT>
-    ): ChainingListener<ToT> = SplittingTransformer(executor, transformer, this)
+        transformer: (FromT) -> Collection<ResourceT?>?
+    ): ChainingListener<FromT> = delegateFrom(executor) { event, publisher ->
+        val split = transformer(event)
+        split?.filterNotNull()?.forEach { publisher(it) }
+    }
+
+    /**
+     * Create proxy listener, that will handle split events in new queue.
+     */
+    fun <FromT : Any> delegateFrom(
+        executor: Executor,
+        transformer: (FromT, (ResourceT) -> Unit) -> Unit
+    ): ChainingListener<FromT> = DelegatingTransformer(executor, transformer, this)
 
 }
