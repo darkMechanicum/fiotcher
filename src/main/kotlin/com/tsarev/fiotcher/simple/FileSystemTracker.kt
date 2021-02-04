@@ -1,12 +1,14 @@
-package com.tsarev.fiotcher.tracker
+package com.tsarev.fiotcher.simple
 
+import com.tsarev.fiotcher.tracker.Tracker
+import com.tsarev.fiotcher.tracker.TrackerEvent
+import com.tsarev.fiotcher.tracker.TrackerEventBunch
+import com.tsarev.fiotcher.common.EventType
 import java.io.File
 import java.net.URI
 import java.nio.file.*
 import java.time.Instant
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Future
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 
 /**
  * Tracker, that monitors file changes on local file system.
@@ -74,12 +76,21 @@ class FileSystemTracker(
     private var registeredWatches: MutableMap<Path, WatchKey> = HashMap()
 
     /**
+     * Create brand new publisher.
+     */
+    private lateinit var publisher: SubmissionPublisher<TrackerEventBunch>
+
+    /**
      * Initialize existing directories.
      */
-    override fun afterInit() {
+    override fun doInit(
+        executor: Executor
+    ): Flow.Publisher<TrackerEventBunch> {
+        publisher = SubmissionPublisher(executor, Int.MAX_VALUE)
         baseDirectory = File(resourceBundle)
             .also { if (!it.isDirectory) throw IllegalArgumentException("$resourceBundle is not a directory!") }
         registerRecursively(baseDirectory)
+        return publisher
     }
 
     /**
@@ -95,7 +106,7 @@ class FileSystemTracker(
                     if (key != null) {
                         // If we succeed, than process this one and try to debounce close changes.
                         // Try to preserve order of events. It can be (or can be not) important.
-                        val allEntries = LinkedHashSet<TrackerEvent>()
+                        val allEntries = LinkedHashSet<InnerEvent>()
                         allEntries += processDirectoryEvent(key)
                         var currentDebounce = 0
                         while (!forced && currentDebounce < debounceMax) {
@@ -111,7 +122,12 @@ class FileSystemTracker(
                             }
                         }
                         // Send event, if not empty.
-                        if (allEntries.isNotEmpty()) consumer(TrackerEventBunch(allEntries))
+                        if (allEntries.isNotEmpty()) {
+                            val groupedByType = allEntries.groupBy({ it.type }, { it.resource })
+                            val trackerEvents = groupedByType.keys
+                                .map { TrackerEvent(groupedByType[it]!!, it) }
+                            publisher.submit(TrackerEventBunch(trackerEvents))
+                        }
                     }
                 } catch (interrupted: InterruptedException) {
                     doStopBrake()
@@ -127,6 +143,14 @@ class FileSystemTracker(
             doStopBrake()
         }
     }
+
+    /**
+     * Private inner event to simplify groupong.
+     */
+    private data class InnerEvent(
+        val type: EventType,
+        val resource: URI
+    )
 
     /**
      * Perform directories recursive scan, registering them.
@@ -160,9 +184,9 @@ class FileSystemTracker(
     /**
      * Process single change directory content event.
      */
-    private fun processDirectoryEvent(key: WatchKey): Collection<TrackerEvent> {
+    private fun processDirectoryEvent(key: WatchKey): Collection<InnerEvent> {
         val events = key.pollEvents()
-        val currentEventBunch = HashMap<Path, TrackerEvent.Type>()
+        val currentEventBunch = LinkedHashSet<Pair<Path, EventType>>()
         val basePath = key.watchable() as Path // Always safe, since no other watchables are used here.
         events.forEach { event ->
             when (event.kind()) {
@@ -176,7 +200,7 @@ class FileSystemTracker(
                         if (this.recursive && File(path.toUri()).isDirectory) {
                             registerDirectory(path)
                         } else {
-                            currentEventBunch[it] = TrackerEvent.Type.CREATED
+                            currentEventBunch.add(it to EventType.CREATED)
                         }
                     }
                 }
@@ -188,7 +212,7 @@ class FileSystemTracker(
                     updatePath(path)?.also {
                         if (!File(path.toUri()).isDirectory) {
                             // Watch only non directory entries.
-                            currentEventBunch[it] = TrackerEvent.Type.CHANGED
+                            currentEventBunch.add(it to EventType.CHANGED)
                         }
                     }
                 }
@@ -200,14 +224,14 @@ class FileSystemTracker(
                     val removed = discovered.remove(path)
                     if (removed != null && !removed.second) {
                         // Watch only non directory entries.
-                        currentEventBunch[path] = TrackerEvent.Type.DELETED
+                        currentEventBunch.add(path to EventType.DELETED)
                     } else if (removed != null) {
                         registeredWatches[path]?.cancel()
                     }
                 }
             }
         }
-        return currentEventBunch.map { TrackerEvent(it.key.toAbsolutePath().toUri(), it.value) }
+        return currentEventBunch.map { InnerEvent(it.second, it.first.toAbsolutePath().toUri()) }
     }
 
     /**

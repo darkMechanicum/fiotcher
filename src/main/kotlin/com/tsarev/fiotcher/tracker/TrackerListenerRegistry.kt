@@ -1,5 +1,6 @@
 package com.tsarev.fiotcher.tracker
 
+import com.tsarev.fiotcher.flows.CommonListener
 import java.net.URI
 
 /**
@@ -18,30 +19,16 @@ interface TrackerListenerRegistry {
      * Register listener.
      */
     fun registerListener(
-        listener: TrackerListener,
+        listener: CommonListener<TrackerEventBunch>,
         key: String? = null
     )
 
-}
-
-/**
- * Interface to listen for resource events from managed [Tracker]s.
- */
-interface TrackerListener {
-
     /**
-     * Called when some monitored resource is changed.
+     * De register listener.
      */
-    fun onChanged(resource: URI) {}
-
-    /**
-     * Called when some monitored resource has been deleted.
-     */
-    fun onDeleted(resource: URI) {}
-
-    /**
-     * Called when some monitored resource has been created.
-     */
-    fun onCreated(resource: URI) {}
+    fun deRegisterListener(
+        key: String? = null,
+        force: Boolean = false
+    )
 
 }

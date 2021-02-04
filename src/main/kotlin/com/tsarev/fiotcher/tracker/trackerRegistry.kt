@@ -2,6 +2,9 @@ package com.tsarev.fiotcher.tracker
 
 import com.tsarev.fiotcher.common.Stoppable
 import java.net.URI
+import java.util.concurrent.Executor
+import java.util.concurrent.Flow
+import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.Future
 
 
@@ -26,11 +29,6 @@ class PoolIsStopping
 abstract class Tracker : Runnable, Stoppable {
 
     /**
-     * callback to send resource change events.
-     */
-    protected lateinit var consumer: (TrackerEventBunch) -> Unit
-
-    /**
      * Path to tracked resource bundle.
      */
     protected lateinit var resourceBundle: URI
@@ -39,22 +37,21 @@ abstract class Tracker : Runnable, Stoppable {
      * Possible time consuming initial registration.
      *
      * @param resourceBundle path to tracked resource bundle
-     * @param consumer callback to send resource change events
      */
     fun init(
         resourceBundle: URI,
-        consumer: (TrackerEventBunch) -> Unit
-    ) {
+        executor: Executor = ForkJoinPool.commonPool()
+    ): Flow.Publisher<TrackerEventBunch> {
         this.resourceBundle = resourceBundle
-        this.consumer = consumer
-        afterInit()
+        return doInit(executor)
     }
 
     /**
      * Part of initialization that can be altered by descendants.
      */
-    open fun afterInit() {
-    }
+    abstract fun doInit(
+        executor: Executor
+    ): Flow.Publisher<TrackerEventBunch>
 
 }
 

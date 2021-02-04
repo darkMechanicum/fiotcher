@@ -1,6 +1,9 @@
 package com.tsarev.fiotcher.tracker
 
+import com.tsarev.fiotcher.common.TypedEvent
 import java.net.URI
+
+typealias TrackerEvent = TypedEvent<Collection<URI>>
 
 /**
  * Bunch of grouped [TrackerEvent]
@@ -8,28 +11,3 @@ import java.net.URI
 data class TrackerEventBunch(
     val events: Collection<TrackerEvent>
 )
-
-/**
- * Event that points to some changed resource.
- */
-data class TrackerEvent(
-    val resource: URI,
-    val type: Type
-) {
-    enum class Type {
-        /**
-         * Resource is created.
-         */
-        CREATED,
-
-        /**
-         * Resource content is changed in any way.
-         */
-        CHANGED,
-
-        /**
-         * Resource is deleted.
-         */
-        DELETED
-    }
-}
