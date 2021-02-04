@@ -6,9 +6,9 @@ import java.util.concurrent.Flow
 import java.util.concurrent.Future
 
 /**
- * Single [Flow.Subscription] common methods.
+ * Common methods for [Flow.Subscriber] with only one [Flow.Subscription].
  */
-abstract class SubscriberAdapter<T> : Flow.Subscriber<T>, Stoppable {
+abstract class SingleSubscriptionSubscriber<T> : Flow.Subscriber<T>, Stoppable {
 
     /**
      * Registered subscriptions.

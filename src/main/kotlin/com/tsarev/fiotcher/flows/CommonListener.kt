@@ -1,13 +1,12 @@
 package com.tsarev.fiotcher.flows
 
-import java.util.*
 import java.util.concurrent.Flow
 
 /**
  * Common resource listener.
  */
 abstract class CommonListener<ResourceT: Any>
-    : SubscriberAdapter<ResourceT>(), Flow.Subscriber<ResourceT> {
+    : SingleSubscriptionSubscriber<ResourceT>(), Flow.Subscriber<ResourceT>, ChainingListener<ResourceT> {
 
     /**
      * Call super and guaranteed method.

@@ -1,5 +1,6 @@
 package com.tsarev.fiotcher.flows
 
+import com.tsarev.fiotcher.common.Stoppable
 import java.lang.NullPointerException
 import java.util.concurrent.*
 
@@ -13,14 +14,18 @@ import java.util.concurrent.*
  * from creating for events.
  */
 class Aggregator<ResourceT: Any>(
-    executorService: ExecutorService = ForkJoinPool.commonPool(),
-    capacity: Int = Int.MAX_VALUE
-) : SubscriberAdapter<ResourceT>(), Flow.Processor<ResourceT, ResourceT> {
+    executorService: ExecutorService = ForkJoinPool.commonPool()
+) : Flow.Processor<ResourceT, ResourceT>, Stoppable {
 
     /**
      * Aggregator publisher.
      */
-    private val destination = SubmissionPublisher<ResourceT>(executorService, capacity)
+    private val destination = SubmissionPublisher<ResourceT>(executorService, Flow.defaultBufferSize())
+
+    /**
+     * Registered subscriptions.
+     */
+    private val subscriptions = ArrayList<Flow.Subscription>()
 
     override fun subscribe(subscriber: Flow.Subscriber<in ResourceT>?) {
         if (subscriber == null) throw NullPointerException()
@@ -28,12 +33,32 @@ class Aggregator<ResourceT: Any>(
     }
 
     override fun onNext(item: ResourceT) {
-        super.onNext(item)
         destination.submit(item)
     }
 
     override fun stop(force: Boolean): Future<*> {
-        destination.close()
-        return super.stop(force)
+        return if (force) {
+            CompletableFuture.runAsync {
+                subscriptions.forEach { it.cancel() }
+                destination.close()
+            }
+        } else {
+            subscriptions.forEach { it.cancel() }
+            destination.close()
+            CompletableFuture.completedFuture(Unit)
+        }
+    }
+
+    override fun onSubscribe(subscription: Flow.Subscription) {
+        subscription.request(Long.MAX_VALUE)
+        subscriptions += subscription
+    }
+
+    override fun onError(throwable: Throwable?) {
+        // no-op
+    }
+
+    override fun onComplete() {
+        // no-op
     }
 }

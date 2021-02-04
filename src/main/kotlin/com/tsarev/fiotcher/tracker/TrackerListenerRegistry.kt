@@ -1,5 +1,6 @@
 package com.tsarev.fiotcher.tracker
 
+import com.tsarev.fiotcher.flows.ChainingListener
 import com.tsarev.fiotcher.flows.CommonListener
 import java.net.URI
 
@@ -19,7 +20,7 @@ interface TrackerListenerRegistry {
      * Register listener.
      */
     fun registerListener(
-        listener: CommonListener<TrackerEventBunch>,
+        listener: ChainingListener<TrackerEventBunch>,
         key: String? = null
     )
 

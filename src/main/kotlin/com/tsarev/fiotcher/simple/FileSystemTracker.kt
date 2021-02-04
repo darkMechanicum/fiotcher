@@ -86,7 +86,7 @@ class FileSystemTracker(
     override fun doInit(
         executor: Executor
     ): Flow.Publisher<TrackerEventBunch> {
-        publisher = SubmissionPublisher(executor, Int.MAX_VALUE)
+        publisher = SubmissionPublisher(executor, Flow.defaultBufferSize())
         baseDirectory = File(resourceBundle)
             .also { if (!it.isDirectory) throw IllegalArgumentException("$resourceBundle is not a directory!") }
         registerRecursively(baseDirectory)
