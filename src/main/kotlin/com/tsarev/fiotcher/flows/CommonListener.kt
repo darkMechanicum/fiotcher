@@ -16,6 +16,10 @@ abstract class CommonListener<ResourceT: Any>
         doOnNext(item)
     }
 
+    override fun askNext() {
+        subscription?.request(1)
+    }
+
     /**
      * Actual onNext handling.
      */

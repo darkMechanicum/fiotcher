@@ -1,4 +1,4 @@
-package com.tsarev.fiotcher.simple
+package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.tracker.Tracker
 import com.tsarev.fiotcher.tracker.TrackerEvent
@@ -36,7 +36,7 @@ class FileSystemTracker(
      */
     private val recursive: Boolean = true,
 
-    ) : Tracker() {
+    ) : Tracker<File>() {
 
     /**
      * If this tracker is running.
@@ -49,11 +49,6 @@ class FileSystemTracker(
      */
     @Volatile
     private var forced = false
-
-    /**
-     * Base directory to track.
-     */
-    private lateinit var baseDirectory: File
 
     /**
      * File system that residents at watched path.
@@ -78,18 +73,17 @@ class FileSystemTracker(
     /**
      * Create brand new publisher.
      */
-    private lateinit var publisher: SubmissionPublisher<TrackerEventBunch>
+    private lateinit var publisher: SubmissionPublisher<TrackerEventBunch<File>>
 
     /**
      * Initialize existing directories.
      */
     override fun doInit(
         executor: Executor
-    ): Flow.Publisher<TrackerEventBunch> {
+    ): Flow.Publisher<TrackerEventBunch<File>> {
+        if (!resourceBundle.isDirectory) throw IllegalArgumentException("$resourceBundle is not a directory!")
         publisher = SubmissionPublisher(executor, Flow.defaultBufferSize())
-        baseDirectory = File(resourceBundle)
-            .also { if (!it.isDirectory) throw IllegalArgumentException("$resourceBundle is not a directory!") }
-        registerRecursively(baseDirectory)
+        registerRecursively(resourceBundle)
         return publisher
     }
 
@@ -107,7 +101,7 @@ class FileSystemTracker(
                         // If we succeed, than process this one and try to debounce close changes.
                         // Try to preserve order of events. It can be (or can be not) important.
                         val allEntries = LinkedHashSet<InnerEvent>()
-                        allEntries += processDirectoryEvent(key)
+                        allEntries.addNewEntries(processDirectoryEvent(key))
                         var currentDebounce = 0
                         while (!forced && currentDebounce < debounceMax) {
                             try {
@@ -115,7 +109,7 @@ class FileSystemTracker(
                                 key?.reset()
                                 key = watchService.poll(debounceTimeoutMs, TimeUnit.MILLISECONDS)
                                 if (key == null) break
-                                allEntries += processDirectoryEvent(key)
+                                allEntries.addNewEntries(processDirectoryEvent(key))
                                 currentDebounce++
                             } catch (interrupted: InterruptedException) {
                                 doStopBrake() // Set to stop, but continue debounce.
@@ -134,7 +128,7 @@ class FileSystemTracker(
                     Thread.currentThread().interrupt()
                 } catch (cause: Throwable) {
                     doStopBrake()
-                    throw RuntimeException("Something failed while watching $baseDirectory", cause)
+                    throw RuntimeException("Something failed while watching $resourceBundle", cause)
                 } finally {
                     key?.reset()
                 }
@@ -145,11 +139,32 @@ class FileSystemTracker(
     }
 
     /**
+     * Remove events that cancel each other.
+     */
+    private fun MutableCollection<InnerEvent>.addNewEntries(new: Collection<InnerEvent>) {
+        new.forEach {
+            val deletedCopy = it.copy(type = EventType.DELETED)
+            val createdCopy = it.copy(type = EventType.CREATED)
+            when (it.type) {
+                EventType.CHANGED -> if (!this.contains(deletedCopy)) this += it
+                EventType.CREATED -> if (this.contains(deletedCopy)) {
+                    this -= deletedCopy
+                    this += createdCopy
+                }
+                EventType.DELETED -> if (this.contains(createdCopy)) {
+                    this -= createdCopy
+                    this += deletedCopy
+                }
+            }
+        }
+    }
+
+    /**
      * Private inner event to simplify groupong.
      */
     private data class InnerEvent(
         val type: EventType,
-        val resource: URI
+        val resource: File
     )
 
     /**
@@ -231,7 +246,7 @@ class FileSystemTracker(
                 }
             }
         }
-        return currentEventBunch.map { InnerEvent(it.second, it.first.toAbsolutePath().toUri()) }
+        return currentEventBunch.map { InnerEvent(it.second, File(it.first.toAbsolutePath().toUri())) }
     }
 
     /**
@@ -265,7 +280,6 @@ class FileSystemTracker(
     private fun doCreateBrake() = synchronized(this) {
         brake ?: CompletableFuture<Unit>()
             .also { this.brake = it }
-            // Clear brake when completed.
             .apply {
                 thenAccept {
                     this@FileSystemTracker.watchService.close()

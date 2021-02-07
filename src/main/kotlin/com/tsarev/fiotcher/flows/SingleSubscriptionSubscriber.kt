@@ -1,6 +1,6 @@
 package com.tsarev.fiotcher.flows
 
-import com.tsarev.fiotcher.common.Stoppable
+import com.tsarev.fiotcher.api.Stoppable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Flow
 import java.util.concurrent.Future

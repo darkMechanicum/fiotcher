@@ -1,17 +1,14 @@
 package com.tsarev.fiotcher.tracker
 
-import com.tsarev.fiotcher.common.Stoppable
+import com.tsarev.fiotcher.api.Stoppable
 import java.net.URI
-import java.util.concurrent.Executor
-import java.util.concurrent.Flow
-import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.Future
 
 
 /**
  * Exception to signal, that tracker has been already registered for some URI.
  */
-class TrackerAlreadyRegistered(resource: URI, key: String)
+class TrackerAlreadyRegistered(resource: Any, key: String)
     : RuntimeException("Tracker for resource: $resource and key: $key has been already registered.")
 
 /**
@@ -21,47 +18,12 @@ class PoolIsStopping
     : RuntimeException("Tracker pool is stopping and can't register anything")
 
 /**
- * Resource tracker that is responsible for
- * tracking resource sets at specified location and
- * watching if resource set is changed, or
- * resources content is changed.
- */
-abstract class Tracker : Runnable, Stoppable {
-
-    /**
-     * Path to tracked resource bundle.
-     */
-    protected lateinit var resourceBundle: URI
-
-    /**
-     * Possible time consuming initial registration.
-     *
-     * @param resourceBundle path to tracked resource bundle
-     */
-    fun init(
-        resourceBundle: URI,
-        executor: Executor = ForkJoinPool.commonPool()
-    ): Flow.Publisher<TrackerEventBunch> {
-        this.resourceBundle = resourceBundle
-        return doInit(executor)
-    }
-
-    /**
-     * Part of initialization that can be altered by descendants.
-     */
-    abstract fun doInit(
-        executor: Executor
-    ): Flow.Publisher<TrackerEventBunch>
-
-}
-
-/**
  * Tracker pool that managers trackers execution.
  * Allows to create, start, stop and monitor trackers.
  *
  * Responsible for trackers asynchronous behaviour.
  */
-interface TrackerPool : Stoppable {
+interface TrackerPool<WatchT : Any> : Stoppable {
 
     /**
      * Register and start tracker to scan passed [resourceBundle].
@@ -71,8 +33,8 @@ interface TrackerPool : Stoppable {
      * @param tracker tracker to register
      */
     fun registerTracker(
-        resourceBundle: URI,
-        tracker: Tracker,
+        resourceBundle: WatchT,
+        tracker: Tracker<WatchT>,
         key: String? = null
     ): Future<*>
 
@@ -88,7 +50,7 @@ interface TrackerPool : Stoppable {
      *
      */
     fun deRegisterTracker(
-        resourceBundle: URI,
+        resourceBundle: WatchT,
         key: String? = null,
         force: Boolean = false
     ): Future<*>

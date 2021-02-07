@@ -6,18 +6,18 @@ import java.net.URI
 /**
  * Raises, when an error occurred while opening stream.
  */
-class CannotOpenStream(resource: URI, cause: Throwable) :
+class CannotOpenStream(resource: Any, cause: Throwable) :
     RuntimeException("Cannot open stream for $resource", cause)
 
 /**
  * Interface that hides [InputStream] creation.
  */
-interface ResourceStreamPool {
+interface ResourceStreamPool<ResourceT : Any> {
 
     /**
      * Get input stream for selected resource.
      *
      * @throws CannotOpenStream when stream open failed
      */
-    fun getInputStream(resource: URI): InputStream
+    fun getInputStream(resource: ResourceT): InputStream?
 }

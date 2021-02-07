@@ -14,13 +14,13 @@ class TrackerListenerAlreadyRegistered(key: String)
  * Interface to separate [TrackerEvent] listening process
  * from actually generating these events.
  */
-interface TrackerListenerRegistry {
+interface TrackerListenerRegistry<WatchT : Any> {
 
     /**
      * Register listener.
      */
     fun registerListener(
-        listener: ChainingListener<TrackerEventBunch>,
+        listener: ChainingListener<TrackerEventBunch<WatchT>>,
         key: String? = null
     )
 

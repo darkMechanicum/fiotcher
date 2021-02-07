@@ -3,7 +3,7 @@ package com.tsarev.fiotcher.flows
 import java.util.concurrent.*
 
 /**
- * Resource transformer, that delegates on how to split and publish.
+ * Resource transformer, that delegates to passed function how to split and publish.
  */
 class DelegatingTransformer<FromT: Any, ToT: Any>(
     executor: Executor,
@@ -22,7 +22,14 @@ class DelegatingTransformer<FromT: Any, ToT: Any>(
     }
 
     override fun doOnNext(item: FromT) {
-        transform(item) { destination.submit(it) }
+        var pushed = false
+        transform(item) {
+            pushed = true
+            destination.submit(it)
+        }
+        if (!pushed) {
+            askNext()
+        }
     }
 
     override fun stop(force: Boolean): Future<*> {
