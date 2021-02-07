@@ -1,6 +1,6 @@
-package com.tsarev.fiotcher.flows
+package com.tsarev.fiotcher.dflt.flows
 
-import com.tsarev.fiotcher.api.Stoppable
+import com.tsarev.fiotcher.api.util.Stoppable
 import java.lang.NullPointerException
 import java.util.concurrent.*
 
@@ -37,6 +37,9 @@ class Aggregator<ResourceT: Any>(
     }
 
     override fun stop(force: Boolean): Future<*> {
+        // TODO implement listening stopping
+        // TODO need to wait for estimateMaximumLag become 0 (or implement self counter) if not forced
+        // destination.estimateMaximumLag()
         return if (force) {
             CompletableFuture.runAsync {
                 subscriptions.forEach { it.cancel() }
@@ -50,6 +53,7 @@ class Aggregator<ResourceT: Any>(
     }
 
     override fun onSubscribe(subscription: Flow.Subscription) {
+        // What can we do with this in the current Flow API?
         subscription.request(Long.MAX_VALUE)
         subscriptions += subscription
     }

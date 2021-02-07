@@ -1,5 +1,6 @@
-package com.tsarev.fiotcher.flows
+package com.tsarev.fiotcher.dflt.flows
 
+import com.tsarev.fiotcher.api.flow.ChainingListener
 import java.util.concurrent.*
 
 /**
@@ -33,6 +34,9 @@ class DelegatingTransformer<FromT: Any, ToT: Any>(
     }
 
     override fun stop(force: Boolean): Future<*> {
+        // TODO implement listening stopping
+        // TODO need to wait for estimateMaximumLag become 0 (or implement self counter) if not forced
+        // destination.estimateMaximumLag()
         return if (force) {
             CompletableFuture.runAsync {
                 subscription?.cancel()

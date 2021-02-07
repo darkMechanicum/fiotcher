@@ -1,7 +1,6 @@
-package com.tsarev.fiotcher.tracker
+package com.tsarev.fiotcher.api.tracker
 
-import com.tsarev.fiotcher.api.Stoppable
-import java.net.URI
+import com.tsarev.fiotcher.api.util.Stoppable
 import java.util.concurrent.Future
 
 

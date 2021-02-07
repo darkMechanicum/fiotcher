@@ -1,4 +1,4 @@
-package com.tsarev.fiotcher.api
+package com.tsarev.fiotcher.api.util
 
 import java.util.concurrent.Future
 

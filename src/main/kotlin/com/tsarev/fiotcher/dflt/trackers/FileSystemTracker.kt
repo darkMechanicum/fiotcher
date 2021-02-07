@@ -1,11 +1,10 @@
-package com.tsarev.fiotcher.dflt
+package com.tsarev.fiotcher.dflt.trackers
 
-import com.tsarev.fiotcher.tracker.Tracker
-import com.tsarev.fiotcher.tracker.TrackerEvent
-import com.tsarev.fiotcher.tracker.TrackerEventBunch
-import com.tsarev.fiotcher.common.EventType
+import com.tsarev.fiotcher.api.EventType
+import com.tsarev.fiotcher.api.tracker.Tracker
+import com.tsarev.fiotcher.api.tracker.TrackerEvent
+import com.tsarev.fiotcher.api.tracker.TrackerEventBunch
 import java.io.File
-import java.net.URI
 import java.nio.file.*
 import java.time.Instant
 import java.util.concurrent.*

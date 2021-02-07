@@ -1,15 +1,15 @@
 package com.tsarev.fiotcher.dflt
 
-import com.tsarev.fiotcher.flows.Aggregator
-import com.tsarev.fiotcher.flows.ChainingListener
-import com.tsarev.fiotcher.tracker.*
+import com.tsarev.fiotcher.dflt.flows.Aggregator
+import com.tsarev.fiotcher.api.flow.ChainingListener
+import com.tsarev.fiotcher.api.tracker.*
 import java.util.concurrent.*
 
 /**
  * Default tracker pool implementation, which also serves as
  * [TrackerEventBunch] notifier.
  */
-class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, TrackerListenerRegistry<WatchT> {
+class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, AggregatorListenerRegistry<WatchT> {
 
     companion object {
         const val keyPrefix = "other.key."
@@ -161,7 +161,7 @@ class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, TrackerListenerReg
         checkIsStopping()
         val wrapped = key.wrapKey
         registeredListeners.computeIfPresent(wrapped) { _, old ->
-            old.stop(true).get()
+            old.stop(force).get()
             null
         }
     }

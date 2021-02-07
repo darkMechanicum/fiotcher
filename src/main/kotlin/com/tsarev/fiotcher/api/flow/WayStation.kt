@@ -1,12 +1,15 @@
-package com.tsarev.fiotcher.intermediate
-
-import com.tsarev.fiotcher.flows.ChainingListener
+package com.tsarev.fiotcher.api.flow
 
 /**
- * This is an intermediate point, where we may group (or may not)
- * perform grouping of processing resources.
+ * This is an intermediate point, where we may split, group and make asynchronous (or may not)
+ * processing of resources.
  */
 interface WayStation {
+
+    /**
+     * Create common listener.
+     */
+    fun <ResourceT : Any> createCommonListener(listener: (ResourceT) -> Unit): ChainingListener<ResourceT>
 
     /**
      * Create proxy listener, that will handle pre converted events in new queue.

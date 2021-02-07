@@ -1,6 +1,6 @@
-package com.tsarev.fiotcher.tracker
+package com.tsarev.fiotcher.api.tracker
 
-import com.tsarev.fiotcher.common.TypedEvent
+import com.tsarev.fiotcher.api.TypedEvent
 
 typealias TrackerEvent<WatchT> = TypedEvent<Collection<WatchT>>
 

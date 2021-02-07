@@ -1,8 +1,6 @@
-package com.tsarev.fiotcher.tracker
+package com.tsarev.fiotcher.api.tracker
 
-import com.tsarev.fiotcher.flows.ChainingListener
-import com.tsarev.fiotcher.flows.CommonListener
-import java.net.URI
+import com.tsarev.fiotcher.api.flow.ChainingListener
 
 /**
  * Exception to signal, that tracker listener has been already registered for some key.
@@ -12,9 +10,9 @@ class TrackerListenerAlreadyRegistered(key: String)
 
 /**
  * Interface to separate [TrackerEvent] listening process
- * from actually generating these events.
+ * from actually generating those events.
  */
-interface TrackerListenerRegistry<WatchT : Any> {
+interface AggregatorListenerRegistry<WatchT : Any> {
 
     /**
      * Register listener.

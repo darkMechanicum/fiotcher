@@ -1,7 +1,6 @@
-package com.tsarev.fiotcher
+package com.tsarev.fiotcher.api.util
 
 import java.io.InputStream
-import java.net.URI
 
 /**
  * Raises, when an error occurred while opening stream.

@@ -1,6 +1,6 @@
-package com.tsarev.fiotcher.flows
+package com.tsarev.fiotcher.dflt.flows
 
-import com.tsarev.fiotcher.api.Stoppable
+import com.tsarev.fiotcher.api.util.Stoppable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Flow
 import java.util.concurrent.Future
@@ -25,6 +25,7 @@ abstract class SingleSubscriptionSubscriber<T> : Flow.Subscriber<T>, Stoppable {
      * Stop by cancelling subscription.
      */
     override fun stop(force: Boolean): Future<*> {
+        // TODO implement listening stopping
         return if (force) {
             CompletableFuture.runAsync {
                 _subscription?.cancel()
