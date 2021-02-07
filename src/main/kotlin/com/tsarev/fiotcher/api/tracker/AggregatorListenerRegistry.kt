@@ -19,14 +19,14 @@ interface AggregatorListenerRegistry<WatchT : Any> {
      */
     fun registerListener(
         listener: ChainingListener<TrackerEventBunch<WatchT>>,
-        key: String? = null
+        key: String
     )
 
     /**
      * De register listener.
      */
     fun deRegisterListener(
-        key: String? = null,
+        key: String,
         force: Boolean = false
     )
 

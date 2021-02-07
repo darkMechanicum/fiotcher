@@ -1,5 +1,7 @@
 package com.tsarev.fiotcher.api.flow
 
+import java.util.concurrent.Flow
+
 /**
  * This is an intermediate point, where we may split, group and make asynchronous (or may not)
  * processing of resources.

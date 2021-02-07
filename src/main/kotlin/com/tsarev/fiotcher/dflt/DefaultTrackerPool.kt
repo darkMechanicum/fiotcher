@@ -1,8 +1,8 @@
 package com.tsarev.fiotcher.dflt
 
-import com.tsarev.fiotcher.dflt.flows.Aggregator
 import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.api.tracker.*
+import com.tsarev.fiotcher.dflt.flows.Aggregator
 import java.util.concurrent.*
 
 /**
@@ -10,11 +10,6 @@ import java.util.concurrent.*
  * [TrackerEventBunch] notifier.
  */
 class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, AggregatorListenerRegistry<WatchT> {
-
-    companion object {
-        const val keyPrefix = "other.key."
-        const val nullKey = "null.key"
-    }
 
     /**
      * Thread pool, used to launch trackers.
@@ -42,10 +37,9 @@ class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, AggregatorListener
     @Volatile
     private var running = true
 
-    override fun registerTracker(resourceBundle: WatchT, tracker: Tracker<WatchT>, key: String?): Future<*> {
+    override fun registerTracker(resourceBundle: WatchT, tracker: Tracker<WatchT>, key: String): Future<*> {
         checkIsStopping()
-        val wrapped = key.wrapKey
-        val trackerKey = Pair(resourceBundle, wrapped)
+        val trackerKey = Pair(resourceBundle, key)
         // Prepare mocked tracker and future, in case someone decide to stop, before registration is complete.
         val mockTaskFuture = CompletableFuture<Any>()
         val mockStopFuture = CompletableFuture<Boolean>()
@@ -53,7 +47,7 @@ class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, AggregatorListener
         val mockPair = Pair(mockTracker, mockTaskFuture)
         if (registeredTrackers.putIfAbsent(trackerKey, mockPair) != null) throw TrackerAlreadyRegistered(
             resourceBundle,
-            wrapped
+            key
         )
         val result = threadPool.submit {
             if (!this@DefaultTrackerPool.running) return@submit
@@ -65,7 +59,7 @@ class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, AggregatorListener
             }
             try {
                 // Init tracker and subscribe to its publisher.
-                val targetAggregator = getAggregator(wrapped)
+                val targetAggregator = getAggregator(key)
                 tracker.init(resourceBundle, threadPool).subscribe(targetAggregator)
                 threadPool.submit(tracker)
             } catch (cause: Throwable) {
@@ -81,15 +75,16 @@ class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, AggregatorListener
         return if (mockTaskFuture.isCancelled || mockStopFuture.isDone) {
             result.cancel(true)
             // Use force flag from outer caller.
-            tracker.stop(mockStopFuture.get())
+            val rememberedForce = mockStopFuture.get()
+            tracker.stop(rememberedForce)
             return CompletableFuture.completedFuture(Unit)
         } else result
     }
 
-    override fun deRegisterTracker(resourceBundle: WatchT, key: String?, force: Boolean): Future<*> {
+    override fun deRegisterTracker(resourceBundle: WatchT, key: String, force: Boolean): Future<*> {
         checkIsStopping()
-        val wrapped = key.wrapKey
-        val trackerKey = Pair(resourceBundle, wrapped)
+        val trackerKey = Pair(resourceBundle, key)
+        // TODO remove submit and make it more sync like.
         return threadPool.submit {
             if (!this@DefaultTrackerPool.running) return@submit
             val existed = registeredTrackers.remove(trackerKey)
@@ -118,7 +113,19 @@ class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, AggregatorListener
         }
     }
 
-    override fun stop(force: Boolean): Future<Unit> {
+    override fun registerListener(listener: ChainingListener<TrackerEventBunch<WatchT>>, key: String) {
+        checkIsStopping()
+        if (registeredListeners.putIfAbsent(key, listener) != null) throw TrackerListenerAlreadyRegistered(key)
+        getAggregator(key).subscribe(listener)
+    }
+
+    override fun deRegisterListener(key: String, force: Boolean) {
+        checkIsStopping()
+        val deRegistered = registeredListeners[key]
+        deRegistered?.stop(force)?.thenAccept { registeredListeners.remove(key) }
+    }
+
+    override fun stop(force: Boolean): CompletableFuture<Unit> {
         running = false
         // We are well assured that no one can add trackers here.
         // So we just iterate and stop them.
@@ -131,38 +138,6 @@ class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, AggregatorListener
             }
             registeredListeners.clear()
             if (force) threadPool.shutdownNow() else threadPool.shutdown()
-        }
-    }
-
-    override fun registerListener(listener: ChainingListener<TrackerEventBunch<WatchT>>, key: String?) {
-        checkIsStopping()
-        val wrapped = key.wrapKey
-        // Wrap listener to allow [SubmissionPublisher] register it twice if need (after de registration).
-        val wrappedListener = wrapListener(listener)
-        if (registeredListeners.putIfAbsent(wrapped, wrappedListener) != null) throw TrackerListenerAlreadyRegistered(wrapped)
-        getAggregator(wrapped).subscribe(wrappedListener)
-    }
-
-    /**
-     * Wrap to hide possible 'equal by reference' listener inside.
-     */
-    private fun <ResourceT : Any> wrapListener(
-        listener: ChainingListener<ResourceT>
-    ) = WrappedListener(listener)
-
-    /**
-     * Static class to avoid hidden inner references.
-     */
-    private class WrappedListener<ResourceT: Any>(
-        listener: ChainingListener<ResourceT>
-    ) : ChainingListener<ResourceT> by listener
-
-    override fun deRegisterListener(key: String?, force: Boolean) {
-        checkIsStopping()
-        val wrapped = key.wrapKey
-        registeredListeners.computeIfPresent(wrapped) { _, old ->
-            old.stop(force).get()
-            null
         }
     }
 
@@ -192,10 +167,4 @@ class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, AggregatorListener
         override fun run() = throw RuntimeException("Must be never invoked.")
         override fun stop(force: Boolean) = future.apply { complete(force) }
     }
-
-    /**
-     * Wrap null keys.
-     */
-    private val String?.wrapKey
-        get() = this?.let { "$keyPrefix$it" } ?: nullKey
 }

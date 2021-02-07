@@ -1,7 +1,6 @@
 package com.tsarev.fiotcher.dflt.flows
 
 import com.tsarev.fiotcher.api.util.Stoppable
-import java.lang.NullPointerException
 import java.util.concurrent.*
 
 /**
@@ -13,53 +12,68 @@ import java.util.concurrent.*
  * responsible for these events and to separate processing
  * from creating for events.
  */
-class Aggregator<ResourceT: Any>(
-    executorService: ExecutorService = ForkJoinPool.commonPool()
+class Aggregator<ResourceT : Any>(
+    executorService: ExecutorService = ForkJoinPool.commonPool(),
+    maxCapacity: Int = Flow.defaultBufferSize(),
+    initialListening: Boolean = false
 ) : Flow.Processor<ResourceT, ResourceT>, Stoppable {
 
     /**
      * Aggregator publisher.
      */
-    private val destination = SubmissionPublisher<ResourceT>(executorService, Flow.defaultBufferSize())
+    private val destination = SubmissionPublisher<ResourceT>(executorService, maxCapacity)
 
     /**
      * Registered subscriptions.
      */
     private val subscriptions = ArrayList<Flow.Subscription>()
 
+    /**
+     * Listening flag.
+     */
+    @Volatile
+    private var isListening = initialListening
+
     override fun subscribe(subscriber: Flow.Subscriber<in ResourceT>?) {
         if (subscriber == null) throw NullPointerException()
-        subscriber.let { destination.subscribe(it) }
+        destination.subscribe(subscriber)
     }
 
     override fun onNext(item: ResourceT) {
-        destination.submit(item)
+        if (isListening) destination.submit(item)
     }
 
-    override fun stop(force: Boolean): Future<*> {
-        // TODO implement listening stopping
-        // TODO need to wait for estimateMaximumLag become 0 (or implement self counter) if not forced
-        // destination.estimateMaximumLag()
+    override fun stop(force: Boolean): CompletableFuture<*> {
+        val copy: ArrayList<Flow.Subscription>
+        synchronized(this) {
+            copy = ArrayList(subscriptions)
+            isListening = false
+            subscriptions.clear()
+        }
         return if (force) {
-            CompletableFuture.runAsync {
-                subscriptions.forEach { it.cancel() }
-                destination.close()
-            }
+            CompletableFuture.runAsync { copy.forEach { it.cancel() } }
         } else {
-            subscriptions.forEach { it.cancel() }
-            destination.close()
+            copy.forEach { it.cancel() }
             CompletableFuture.completedFuture(Unit)
         }
     }
 
     override fun onSubscribe(subscription: Flow.Subscription) {
-        // What can we do with this in the current Flow API?
-        subscription.request(Long.MAX_VALUE)
-        subscriptions += subscription
+        if (!destination.isClosed) {
+            // What can we do with this in the current Flow API?
+            synchronized(this) {
+                isListening = true
+                subscriptions += subscription
+            }
+            subscription.request(Long.MAX_VALUE)
+        } else {
+            throw IllegalStateException("Aggregator is closed.")
+        }
     }
 
     override fun onError(throwable: Throwable?) {
         throwable?.printStackTrace()
+        stop(true)
     }
 
     override fun onComplete() {

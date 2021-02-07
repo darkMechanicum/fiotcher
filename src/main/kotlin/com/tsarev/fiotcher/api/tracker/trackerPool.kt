@@ -34,7 +34,7 @@ interface TrackerPool<WatchT : Any> : Stoppable {
     fun registerTracker(
         resourceBundle: WatchT,
         tracker: Tracker<WatchT>,
-        key: String? = null
+        key: String
     ): Future<*>
 
     /**
@@ -50,7 +50,7 @@ interface TrackerPool<WatchT : Any> : Stoppable {
      */
     fun deRegisterTracker(
         resourceBundle: WatchT,
-        key: String? = null,
+        key: String,
         force: Boolean = false
     ): Future<*>
 

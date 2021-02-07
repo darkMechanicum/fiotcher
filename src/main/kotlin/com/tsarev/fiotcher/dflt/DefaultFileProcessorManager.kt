@@ -1,10 +1,10 @@
 package com.tsarev.fiotcher.dflt
 
+import com.tsarev.fiotcher.api.EventType
 import com.tsarev.fiotcher.api.FileProcessorManager
 import com.tsarev.fiotcher.api.Processor
-import com.tsarev.fiotcher.api.util.Stoppable
-import com.tsarev.fiotcher.api.EventType
 import com.tsarev.fiotcher.api.tracker.TrackerEventBunch
+import com.tsarev.fiotcher.api.util.Stoppable
 import com.tsarev.fiotcher.dflt.streams.NaiveFileStreamPool
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
 import org.w3c.dom.Document
@@ -33,12 +33,12 @@ class DefaultFileProcessorManager(
         return fileSystemTracker
     }
 
-    override fun stopTracking(path: File, key: String?, force: Boolean): Future<*> {
+    override fun stopTracking(path: File, key: String, force: Boolean): Future<*> {
         return processor.trackerPool
             .deRegisterTracker(path, key, force)
     }
 
-    override fun handleLines(key: String?, linedListener: (String) -> Unit): Stoppable {
+    override fun handleLines(key: String, linedListener: (String) -> Unit): Stoppable {
         val listener = with(processor.wayStation) {
             createCommonListener(linedListener)
                 .syncSplitFrom<InputStream, String> { stream ->
@@ -58,7 +58,7 @@ class DefaultFileProcessorManager(
         return listener
     }
 
-    override fun handleFiles(key: String?, fileListener: (File) -> Unit): Stoppable {
+    override fun handleFiles(key: String, fileListener: (File) -> Unit): Stoppable {
         val listener = with(processor.wayStation) {
             createCommonListener(fileListener)
                 .asyncDelegateFrom<TrackerEventBunch<File>, File> { bunch, publisher ->
@@ -70,7 +70,7 @@ class DefaultFileProcessorManager(
         return listener
     }
 
-    override fun handleSax(key: String?, saxListener: DefaultHandler): Stoppable {
+    override fun handleSax(key: String, saxListener: DefaultHandler): Stoppable {
         val listener = with(processor.wayStation) {
             createCommonListener<InputStream> { saxParser.parse(it, saxListener) }
                 .syncChainFrom<File, InputStream> { naiveFileStreamPool.getInputStream(it) }
@@ -83,7 +83,7 @@ class DefaultFileProcessorManager(
         return listener
     }
 
-    override fun handleDom(key: String?, domListener: (Document) -> Unit): Stoppable {
+    override fun handleDom(key: String, domListener: (Document) -> Unit): Stoppable {
         val listener = with(processor.wayStation) {
             createCommonListener<InputStream> { val document = domParser.parse(it); domListener(document) }
                 .syncChainFrom<File, InputStream> { naiveFileStreamPool.getInputStream(it) }

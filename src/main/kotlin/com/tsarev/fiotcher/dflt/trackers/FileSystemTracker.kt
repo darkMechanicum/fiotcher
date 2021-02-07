@@ -268,7 +268,7 @@ class FileSystemTracker(
     /**
      * Do stop.
      */
-    override fun stop(force: Boolean): Future<Unit> {
+    override fun stop(force: Boolean): CompletableFuture<*> {
         this.forced = force
         return brake ?: doCreateBrake()
     }

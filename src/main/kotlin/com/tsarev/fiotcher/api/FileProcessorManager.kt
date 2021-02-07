@@ -16,11 +16,11 @@ interface FileProcessorManager {
 
     fun startTracking(path: File, key: String, recursively: Boolean = true): Stoppable
 
-    fun stopTracking(path: File, key: String? = null, force: Boolean = false): Future<*>
+    fun stopTracking(path: File, key: String, force: Boolean = false): Future<*>
 
-    fun handleLines(key: String? = null, linedListener: (String) -> Unit): Stoppable
-    fun handleFiles(key: String? = null, fileListener: (File) -> Unit): Stoppable
-    fun handleSax(key: String? = null, saxListener: DefaultHandler): Stoppable
-    fun handleDom(key: String? = null, domListener: (Document) -> Unit): Stoppable
+    fun handleLines(key: String, linedListener: (String) -> Unit): Stoppable
+    fun handleFiles(key: String, fileListener: (File) -> Unit): Stoppable
+    fun handleSax(key: String, saxListener: DefaultHandler): Stoppable
+    fun handleDom(key: String, domListener: (Document) -> Unit): Stoppable
 
 }

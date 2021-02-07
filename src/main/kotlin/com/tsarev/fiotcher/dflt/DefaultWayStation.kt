@@ -4,14 +4,16 @@ import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.api.flow.WayStation
 import com.tsarev.fiotcher.dflt.flows.CommonListener
 import com.tsarev.fiotcher.dflt.flows.DelegatingTransformer
+import java.util.concurrent.Executor
 import java.util.concurrent.Flow
 import java.util.concurrent.ForkJoinPool
 
-class DefaultWayStation : WayStation {
+class DefaultWayStation(
+    private val maxCapacity: Int = Flow.defaultBufferSize(),
+    private val threadPool: Executor = ForkJoinPool.commonPool()
+) : WayStation {
 
-    private val threadPool = ForkJoinPool.commonPool()
-    override fun <ResourceT : Any> createCommonListener(listener: (ResourceT) -> Unit) =
-        object : CommonListener<ResourceT>(listener) {}
+    override fun <ResourceT : Any> createCommonListener(listener: (ResourceT) -> Unit) = CommonListener(listener)
 
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncChainFrom(transformer: (FromT) -> ToT?) =
         object : ChainingListener<FromT> {
@@ -45,7 +47,8 @@ class DefaultWayStation : WayStation {
         }
 
 
-    override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncDelegateFrom(transformer: (FromT, (ToT) -> Unit) -> Unit) =
-        DelegatingTransformer(threadPool, transformer, this)
+    override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncDelegateFrom(
+        transformer: (FromT, (ToT) -> Unit) -> Unit
+    ) = DelegatingTransformer(threadPool, maxCapacity, transformer, this)
 
 }
