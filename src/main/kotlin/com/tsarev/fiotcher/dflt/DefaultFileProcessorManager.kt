@@ -12,6 +12,7 @@ import org.xml.sax.helpers.DefaultHandler
 import java.io.File
 import java.io.InputStream
 import java.util.*
+import java.util.concurrent.CompletionStage
 import java.util.concurrent.Future
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.parsers.SAXParserFactory
@@ -26,16 +27,15 @@ class DefaultFileProcessorManager(
 
     val domParser = DocumentBuilderFactory.newInstance().newDocumentBuilder()
 
-    override fun startTracking(path: File, key: String, recursively: Boolean): Stoppable {
+    override fun startTracking(path: File, key: String, recursively: Boolean): CompletionStage<Stoppable> {
         val fileSystemTracker = FileSystemTracker(recursive = recursively)
-        processor.trackerPool
-            .registerTracker(path, fileSystemTracker, key)
-        return fileSystemTracker
+        return processor.trackerPool
+            .startTracker(path, fileSystemTracker, key)
     }
 
-    override fun stopTracking(path: File, key: String, force: Boolean): Future<*> {
+    override fun stopTracking(path: File, key: String, force: Boolean): CompletionStage<*> {
         return processor.trackerPool
-            .deRegisterTracker(path, key, force)
+            .stopTracker(path, key, force)
     }
 
     override fun handleLines(key: String, linedListener: (String) -> Unit): Stoppable {

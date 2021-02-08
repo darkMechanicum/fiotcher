@@ -1,6 +1,7 @@
 package com.tsarev.fiotcher.api.tracker
 
 import com.tsarev.fiotcher.api.flow.ChainingListener
+import java.util.concurrent.CompletionStage
 
 /**
  * Exception to signal, that tracker listener has been already registered for some key.
@@ -28,6 +29,6 @@ interface AggregatorListenerRegistry<WatchT : Any> {
     fun deRegisterListener(
         key: String,
         force: Boolean = false
-    )
+    ): CompletionStage<*>
 
 }

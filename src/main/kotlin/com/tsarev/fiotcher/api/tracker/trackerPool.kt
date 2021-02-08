@@ -1,7 +1,7 @@
 package com.tsarev.fiotcher.api.tracker
 
 import com.tsarev.fiotcher.api.util.Stoppable
-import java.util.concurrent.Future
+import java.util.concurrent.CompletionStage
 
 
 /**
@@ -31,11 +31,11 @@ interface TrackerPool<WatchT : Any> : Stoppable {
      * @param key type, with which tracker was registered
      * @param tracker tracker to register
      */
-    fun registerTracker(
+    fun startTracker(
         resourceBundle: WatchT,
         tracker: Tracker<WatchT>,
         key: String
-    ): Future<*>
+    ): CompletionStage<Stoppable>
 
     /**
      * Stop tracker asynchronously based on [resourceBundle].
@@ -48,10 +48,10 @@ interface TrackerPool<WatchT : Any> : Stoppable {
      * @param force try to force tracker resource shutdown
      *
      */
-    fun deRegisterTracker(
+    fun stopTracker(
         resourceBundle: WatchT,
         key: String,
         force: Boolean = false
-    ): Future<*>
+    ): CompletionStage<*>
 
 }

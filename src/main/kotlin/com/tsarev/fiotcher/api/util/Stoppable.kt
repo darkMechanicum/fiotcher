@@ -1,6 +1,7 @@
 package com.tsarev.fiotcher.api.util
 
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CompletionStage
 import java.util.concurrent.TimeUnit
 
 /**
@@ -16,7 +17,7 @@ interface Stoppable {
      */
     fun stop(
         force: Boolean = false
-    ): CompletableFuture<*>
+    ): CompletionStage<*>
 
     /**
      * Stop this [Stoppable] synchronously.
@@ -24,7 +25,7 @@ interface Stoppable {
      * @param force try to force stoppable resource shutdown
      */
     fun stopAndWait(force: Boolean = false) {
-        stop(force).get()
+        stop(force).toCompletableFuture().get()
     }
 
     /**
@@ -35,7 +36,7 @@ interface Stoppable {
      * @param force try to force stoppable resource shutdown
      */
     fun stopAndWait(timeout: Long, unit: TimeUnit, force: Boolean = false) {
-        stop(force).get(timeout, unit)
+        stop(force).toCompletableFuture().get(timeout, unit)
     }
 
 }

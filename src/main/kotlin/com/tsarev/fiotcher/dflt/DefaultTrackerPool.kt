@@ -2,6 +2,7 @@ package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.api.tracker.*
+import com.tsarev.fiotcher.api.util.Stoppable
 import com.tsarev.fiotcher.dflt.flows.Aggregator
 import java.util.concurrent.*
 
@@ -11,6 +12,12 @@ import java.util.concurrent.*
  */
 class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, AggregatorListenerRegistry<WatchT> {
 
+    companion object {
+        val mockStoppable = object : Stoppable {
+            override fun stop(force: Boolean) = CompletableFuture.completedFuture(Unit)
+        }
+    }
+
     /**
      * Thread pool, used to launch trackers.
      */
@@ -19,7 +26,8 @@ class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, AggregatorListener
     /**
      * Registerer trackers, by resource and key.
      */
-    private val registeredTrackers = ConcurrentHashMap<Pair<WatchT, String>, Pair<Tracker<WatchT>, Future<*>>>()
+    private val registeredTrackers =
+        ConcurrentHashMap<Pair<WatchT, String>, Pair<Tracker<WatchT>, CompletableFuture<Stoppable>>>()
 
     /**
      * Registered listeners, by key.
@@ -37,107 +45,187 @@ class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, AggregatorListener
     @Volatile
     private var running = true
 
-    override fun registerTracker(resourceBundle: WatchT, tracker: Tracker<WatchT>, key: String): Future<*> {
-        checkIsStopping()
-        val trackerKey = Pair(resourceBundle, key)
-        // Prepare mocked tracker and future, in case someone decide to stop, before registration is complete.
-        val mockTaskFuture = CompletableFuture<Any>()
-        val mockStopFuture = CompletableFuture<Boolean>()
-        val mockTracker = createMockTracker(mockStopFuture)
-        val mockPair = Pair(mockTracker, mockTaskFuture)
-        if (registeredTrackers.putIfAbsent(trackerKey, mockPair) != null) throw TrackerAlreadyRegistered(
-            resourceBundle,
-            key
-        )
-        val result = threadPool.submit {
+    override fun startTracker(
+        resourceBundle: WatchT,
+        tracker: Tracker<WatchT>,
+        key: String
+    ): CompletableFuture<Stoppable> {
+        val trackerKey = resourceBundle to key
+        val resultFuture = CompletableFuture<Stoppable>()
+        val trackerPair = tracker to resultFuture
+
+        // Sync on the pool to handle stopping properly.
+        synchronized(this) {
+            // Stop with exception if pool is stopped.
+            checkIsStopping()
+            // Try to register tracker.
+            if (registeredTrackers.putIfAbsent(trackerKey, trackerPair) != null)
+                throw TrackerAlreadyRegistered(resourceBundle, key)
+        }
+
+        // We shall call submit here, since tracker [init] method is potentially time consuming.
+        // It can, for example, include recursive directory scanning, or remote repository initial fetching.
+        val submissionHandle = threadPool.submit {
+            // Stop silently if pool is stopped.
             if (!this@DefaultTrackerPool.running) return@submit
-            // First, we must replace mocker tracker with real one, to redirect stop requests.
-            val existed = registeredTrackers.computeIfPresent(trackerKey) { _, _ -> Pair(tracker, mockTaskFuture) }
-            // Here we must check - if someone stopped mocked tracker, than clear entry and return.
-            if (existed == null || mockStopFuture.isDone) {
-                return@submit
-            }
+
+            var stoppableWrapper: Stoppable? = null
             try {
-                // Init tracker and subscribe to its publisher.
+                // Try to init tracker and subscribe to its publisher.
+                // Can throw exception due to pool stopping, but we will handle it later.
                 val targetAggregator = getAggregator(key)
-                tracker.init(resourceBundle, threadPool).subscribe(targetAggregator)
+                val trackerPublisher = tracker.init(resourceBundle, threadPool)
+                trackerPublisher.subscribe(targetAggregator)
+
+                // Start tracker. From now he is treated like started.
                 threadPool.submit(tracker)
+                stoppableWrapper = createTrackerStoppable(resourceBundle, key, tracker)
+                registeredTrackers.putIfAbsent(trackerKey, trackerPair)
+                resultFuture.complete(stoppableWrapper)
+
+                // If submission handle had interrupted us, so stop tracker.
+                if (Thread.currentThread().isInterrupted) {
+                    doStopTracker(resourceBundle, key, true, tracker)
+                }
+            } catch (interrupt: InterruptedException) {
+                // Force shutdown if initialization was interrupted.
+                try {
+                    doStopTracker(resourceBundle, key, true, tracker)
+                } finally {
+                    Thread.currentThread().interrupt()
+                }
             } catch (cause: Throwable) {
-                registeredTrackers.remove(trackerKey)?.first?.stop(true) ?: return@submit
+                try {
+                    // Force shutdown if initialization threw an exception.
+                    doStopTracker(resourceBundle, key, true, tracker)
+                } finally {
+                    resultFuture.completeExceptionally(cause)
+                    throw cause
+                }
+            } finally {
+                resultFuture.complete(stoppableWrapper ?: mockStoppable)
+            }
+        }
+
+        // If someone cancels result future, then he must also cancel registration future as well.
+        resultFuture.exceptionally { cause ->
+            if (cause is CancellationException) {
+                // No need to check, whether we are running, since two interrupts cannot hurt more.
+                submissionHandle.cancel(true)
+                mockStoppable
+            } else {
                 throw cause
             }
         }
-        registeredTrackers[trackerKey] = Pair(tracker, result)
-        // If someone cancelled mock future, so we must do with real one and
-        // return completed future, as we finished registration.
-        // But we can't alter [registeredTrackers] since someone that stopped our
-        // tracker had done it.
-        return if (mockTaskFuture.isCancelled || mockStopFuture.isDone) {
-            result.cancel(true)
-            // Use force flag from outer caller.
-            val rememberedForce = mockStopFuture.get()
-            tracker.stop(rememberedForce)
-            return CompletableFuture.completedFuture(Unit)
-        } else result
+
+        return resultFuture
     }
 
-    override fun deRegisterTracker(resourceBundle: WatchT, key: String, force: Boolean): Future<*> {
+    override fun stopTracker(resourceBundle: WatchT, key: String, force: Boolean): CompletableFuture<*> {
         checkIsStopping()
-        val trackerKey = Pair(resourceBundle, key)
-        // TODO remove submit and make it more sync like.
-        return threadPool.submit {
-            if (!this@DefaultTrackerPool.running) return@submit
-            val existed = registeredTrackers.remove(trackerKey)
-            if (existed != null) {
-                try {
-                    // Try to stop graceful.
-                    val stopFuture = existed.first.stop(force)
-                    existed.second.cancel(force)
-                    stopFuture.get()
-                    return@submit
-                } catch (outerCause: Throwable) {
-                    try {
-                        // Something went wrong - force it.
-                        if (!force) {
-                            val stopFuture = existed.first.stop(true)
-                            existed.second.cancel(true)
-                            stopFuture.get()
-                            return@submit
-                        }
-                    } catch (innerCause: Throwable) {
-                        // Retain all failure info.
-                        throw RuntimeException(innerCause).apply { addSuppressed(outerCause) }
-                    }
-                }
-            }
+        val trackerKey = resourceBundle to key
+        val foundTracker = registeredTrackers[trackerKey]?.first
+        return if (foundTracker != null) {
+            doStopTracker(resourceBundle, key, force, foundTracker)
+        } else {
+            CompletableFuture.completedFuture(Unit)
         }
     }
 
     override fun registerListener(listener: ChainingListener<TrackerEventBunch<WatchT>>, key: String) {
-        checkIsStopping()
-        if (registeredListeners.putIfAbsent(key, listener) != null) throw TrackerListenerAlreadyRegistered(key)
+        // Sync on the pool to handle stopping properly.
+        synchronized(this) {
+            checkIsStopping()
+            if (registeredListeners.putIfAbsent(key, listener) != null) throw TrackerListenerAlreadyRegistered(key)
+        }
+        // Can throw exception due to pool stopping, but user will handle it.
         getAggregator(key).subscribe(listener)
     }
 
-    override fun deRegisterListener(key: String, force: Boolean) {
+    override fun deRegisterListener(key: String, force: Boolean): CompletionStage<*> {
         checkIsStopping()
         val deRegistered = registeredListeners[key]
-        deRegistered?.stop(force)?.thenAccept { registeredListeners.remove(key) }
+        return deRegistered?.stop(force)?.thenAccept { registeredListeners.remove(key) }
+            ?: CompletableFuture.completedFuture(Unit)
     }
 
-    override fun stop(force: Boolean): CompletableFuture<Unit> {
-        running = false
-        // We are well assured that no one can add trackers here.
-        // So we just iterate and stop them.
-        return CompletableFuture.supplyAsync {
-            registeredTrackers.map {
-                deRegisterTracker(it.key.first, it.key.second, force).get()
-            }
-            aggregators.map {
-                it.value.stop(force)
-            }
-            registeredListeners.clear()
+    override fun stop(force: Boolean): CompletionStage<*> {
+        // Sync on the pool to handle stopping properly.
+        synchronized(this) {
+            // From this moment no new trackers will be added.
+            running = false
+        }
+
+        val trackersCopy = HashMap(registeredTrackers)
+        val allTrackersStopFuture = trackersCopy
+            .map { (key, value) -> doStopTracker(key.first, key.second, force, value.first) }
+            .reduce { first, second -> first.thenAcceptBoth(second) { _, _ -> } }
+
+        val listenersCopy = HashMap(registeredListeners)
+        val allListenersStopFuture = listenersCopy
+            .map { deRegisterListener(it.key, force) }
+            .reduce { first, second -> first.thenAcceptBoth(second) { _, _ -> } }
+
+        val aggregatorsCopy = HashMap(aggregators)
+        val allAggregatorsStopFuture = aggregatorsCopy.values
+            .map { it.stop(force) }
+            .reduce { first, second -> first.thenAcceptBoth(second) { _, _ -> } }
+
+        val executorShutDownFuture: CompletionStage<*> = CompletableFuture.supplyAsync {
             if (force) threadPool.shutdownNow() else threadPool.shutdown()
+        }
+
+        // Combine all futures in one and clear resources after their completion.
+        return allTrackersStopFuture.thenAcceptBoth(allListenersStopFuture) { _, _ -> }
+            .thenAcceptBoth(allAggregatorsStopFuture) { _, _ -> }
+            .thenAcceptBoth(executorShutDownFuture) { _, _ ->
+                registeredTrackers.clear()
+                registeredListeners.clear()
+                aggregators.clear()
+            }
+    }
+
+    /**
+     * Create a handle, that stops the tracker and de registers it.
+     */
+    private fun createTrackerStoppable(resourceBundle: WatchT, key: String, tracker: Tracker<WatchT>): Stoppable {
+        return object : Stoppable {
+            override fun stop(force: Boolean) =
+                if (this@DefaultTrackerPool.running)
+                    doStopTracker(resourceBundle, key, false, tracker)
+                else
+                    CompletableFuture.completedFuture(Unit)
+        }
+    }
+
+    /**
+     * Do stop tracker, either from initializing failure, or from manual stopping.
+     *
+     * This place must be the one, that removes registered tracker, except from the [stop] method
+     * of the pool.
+     */
+    private fun doStopTracker(
+        resourceBundle: WatchT,
+        key: String,
+        force: Boolean,
+        tracker: Tracker<WatchT>
+    ): CompletableFuture<*> {
+        val trackerKey = resourceBundle to key
+        val existingTrackerPair = registeredTrackers[trackerKey]
+        // Ensure first, that we are stopping the right tracker.
+        return if (existingTrackerPair != null && existingTrackerPair.first == tracker) {
+            // Add handler to stop tracker and remove it from registered.
+            val submissionHandle = existingTrackerPair.second
+            val resultHandle = submissionHandle.whenComplete { _, _ ->
+                registeredTrackers.computeIfPresent(trackerKey) { _, old -> if (tracker == old) null else old }
+            }.thenCompose { stoppable ->
+                stoppable?.stop(force)?.thenAccept { }
+            }
+            // Cancel the handle in case it is not finished yet if we are forcing.
+            submissionHandle.cancel(force)
+            resultHandle
+        } else {
+            CompletableFuture.completedFuture(Unit)
         }
     }
 
@@ -145,8 +233,12 @@ class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, AggregatorListener
      * Create new aggregator at need.
      */
     private fun getAggregator(key: String): Aggregator<TrackerEventBunch<WatchT>> {
-        return aggregators.computeIfAbsent(key) {
-            Aggregator(threadPool)
+        // Sync on the pool to handle stopping properly.
+        synchronized(this) {
+            checkIsStopping()
+            return aggregators.computeIfAbsent(key) {
+                Aggregator(threadPool)
+            }
         }
     }
 
@@ -157,14 +249,5 @@ class DefaultTrackerPool<WatchT : Any> : TrackerPool<WatchT>, AggregatorListener
         if (!running) {
             throw PoolIsStopping()
         }
-    }
-
-    /**
-     * Create mock tracker, which can only hold simple signal state.
-     */
-    private fun createMockTracker(future: CompletableFuture<Boolean>) = object : Tracker<WatchT>() {
-        override fun doInit(executor: Executor) = throw RuntimeException("Must be never invoked.")
-        override fun run() = throw RuntimeException("Must be never invoked.")
-        override fun stop(force: Boolean) = future.apply { complete(force) }
     }
 }
