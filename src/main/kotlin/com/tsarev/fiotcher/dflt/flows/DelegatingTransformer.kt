@@ -9,6 +9,7 @@ import java.util.concurrent.*
 class DelegatingTransformer<FromT : Any, ToT : Any>(
     executor: Executor = ForkJoinPool.commonPool(),
     maxCapacity: Int = Flow.defaultBufferSize(),
+    private val stoppingExecutor: ExecutorService,
     private val transform: (FromT, (ToT) -> Unit) -> Unit,
     private val chained: ChainingListener<ToT>
 ) : SingleSubscriptionSubscriber<FromT>(), Flow.Processor<FromT, ToT> {
@@ -20,7 +21,7 @@ class DelegatingTransformer<FromT : Any, ToT : Any>(
     }
 
     override fun subscribe(subscriber: Flow.Subscriber<in ToT>?) {
-        destination.subscribe(subscriber)
+        if (!isStopped) destination.subscribe(subscriber)
     }
 
     override fun doOnNext(item: FromT) {
@@ -45,11 +46,12 @@ class DelegatingTransformer<FromT : Any, ToT : Any>(
     /**
      * Spin loop that all events are processed.
      */
+    // TODO What can we do with this spin loop?
     private fun loopForEventsCompletion(force: Boolean): CompletableFuture<*> =
         if (force)
             CompletableFuture.completedFuture(Unit)
         else
-            CompletableFuture.runAsync {
-                while (destination.estimateMaximumLag() != 0) Thread.sleep(10);
-            }
+            CompletableFuture.runAsync(
+                { while (destination.estimateMaximumLag() != 0) Thread.sleep(10) }, stoppingExecutor
+            )
 }

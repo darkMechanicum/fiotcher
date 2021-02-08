@@ -9,7 +9,7 @@ class CannotOpenStream(resource: Any, cause: Throwable) :
     RuntimeException("Cannot open stream for $resource", cause)
 
 /**
- * Interface that hides [InputStream] creation.
+ * Utility interface that hides [InputStream] creation.
  */
 interface ResourceStreamPool<ResourceT : Any> {
 

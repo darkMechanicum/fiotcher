@@ -1,7 +1,7 @@
 package com.tsarev.fiotcher.dflt.flows
 
+import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.api.flow.ChainingListener
-import com.tsarev.fiotcher.api.util.Stoppable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Flow
 
@@ -28,6 +28,8 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> : ChainingListener<
     @Volatile
     private var brake: CompletableFuture<*>? = null
 
+    override val isStopped get() = brake != null
+
     /**
      * Stop by cancelling subscription.
      */
@@ -44,21 +46,21 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> : ChainingListener<
      * Request maximum of entries and store subscription.
      */
     override fun onSubscribe(subscription: Flow.Subscription) {
-        if (brake != null) throw IllegalStateException("Cannot subscribe when stopped.")
-        if (_subscription != null) throw RuntimeException("Cannot subscribe to multiple publishers.")
+        if (isStopped) throw IllegalStateException("Cannot subscribe when stopped.")
+        if (_subscription != null) throw IllegalStateException("Cannot subscribe to multiple publishers.")
         _subscription = subscription
         subscription.request(1) // Ask for single element.
     }
 
     override fun onNext(item: ResourceT) {
-        if (brake == null) {
+        if (!isStopped) {
             _subscription?.request(1) // Ask for another element.
             doOnNext(item)
         }
     }
 
     override fun askNext() {
-        if (brake == null) {
+        if (!isStopped) {
             _subscription?.request(1)
         }
     }

@@ -1,4 +1,4 @@
-package com.tsarev.fiotcher.api.util
+package com.tsarev.fiotcher.api
 
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.TimeUnit
@@ -8,6 +8,11 @@ import java.util.concurrent.TimeUnit
  * precisely.
  */
 interface Stoppable {
+
+    /**
+     * Is stopped flag.
+     */
+    val isStopped: Boolean
 
     /**
      * Stop this [Stoppable] asynchronously.

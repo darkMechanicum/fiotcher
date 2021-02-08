@@ -1,6 +1,6 @@
 package com.tsarev.fiotcher.dflt.flows
 
-import com.tsarev.fiotcher.api.util.Stoppable
+import com.tsarev.fiotcher.api.Stoppable
 import java.util.concurrent.*
 
 /**
@@ -11,6 +11,9 @@ import java.util.concurrent.*
  * This is useful in case, when we need to separate threads,
  * responsible for these events and to separate processing
  * from creating for events.
+ *
+ * Note: When stopping this [Aggregator] it suspends its
+ * work until any new subscription by it.
  */
 class Aggregator<ResourceT : Any>(
     executorService: ExecutorService = ForkJoinPool.commonPool(),
@@ -29,40 +32,44 @@ class Aggregator<ResourceT : Any>(
     private val subscriptions = ArrayList<Flow.Subscription>()
 
     /**
-     * Listening flag.
+     * Listening brake flag.
      */
     @Volatile
-    private var isListening = initialListening
+    private var brake: CompletableFuture<*>? = if (initialListening) null else CompletableFuture.completedFuture(Unit)
+
+    override val isStopped: Boolean get() = brake != null
 
     override fun subscribe(subscriber: Flow.Subscriber<in ResourceT>?) {
-        if (subscriber == null) throw NullPointerException()
-        destination.subscribe(subscriber)
+        if (!isStopped) {
+            if (subscriber == null) throw NullPointerException()
+            destination.subscribe(subscriber)
+        }
     }
 
     override fun onNext(item: ResourceT) {
-        if (isListening) destination.submit(item)
+        if (!isStopped) destination.submit(item)
     }
 
     override fun stop(force: Boolean): CompletableFuture<*> {
+        val brakeCopy = brake
+        if (brakeCopy != null) return brakeCopy
         val copy: ArrayList<Flow.Subscription>
         synchronized(this) {
+            val syncBrakeCopy = brake
+            if (syncBrakeCopy != null) return syncBrakeCopy
+            brake = CompletableFuture<Unit>()
             copy = ArrayList(subscriptions)
-            isListening = false
             subscriptions.clear()
         }
-        return if (force) {
-            CompletableFuture.runAsync { copy.forEach { it.cancel() } }
-        } else {
-            copy.forEach { it.cancel() }
-            CompletableFuture.completedFuture(Unit)
-        }
+        copy.forEach { it.cancel() }
+        return CompletableFuture.completedFuture(Unit)
     }
 
     override fun onSubscribe(subscription: Flow.Subscription) {
         if (!destination.isClosed) {
             // What can we do with this in the current Flow API?
             synchronized(this) {
-                isListening = true
+                brake = null
                 subscriptions += subscription
             }
             subscription.request(Long.MAX_VALUE)

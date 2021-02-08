@@ -1,9 +1,22 @@
 package com.tsarev.fiotcher.api.tracker
 
-import com.tsarev.fiotcher.api.util.Stoppable
+import com.tsarev.fiotcher.api.TypedEvent
+import com.tsarev.fiotcher.api.Stoppable
 import java.util.concurrent.Executor
 import java.util.concurrent.Flow
 import java.util.concurrent.ForkJoinPool
+
+/**
+ * Useful typealias for typed event.
+ */
+typealias TrackerEvent<WatchT> = TypedEvent<Collection<WatchT>>
+
+/**
+ * Bunch of grouped [TrackerEvent]
+ */
+data class TrackerEventBunch<WatchT : Any>(
+    val events: List<TrackerEvent<WatchT>>
+)
 
 /**
  * Resource tracker that is responsible for

@@ -16,22 +16,22 @@ import java.util.concurrent.*
  */
 class FileSystemTracker(
     /**
-     * Timeout to wait until event.
+     * Timeout to wait until stop checking.
      */
     private val checkForStopTimeoutMs: Long = 100,
 
     /**
-     * Timeout to wait until event.
+     * Timeout to debounce time close changed files.
      */
     private val debounceTimeoutMs: Long = 10,
 
     /**
-     * Timeout to wait until event.
+     * Maximum debounce tries.
      */
     private val debounceMax: Long = 10,
 
     /**
-     * If should go down directories.
+     * If should track directories recursively.
      */
     private val recursive: Boolean = true,
 
@@ -44,13 +44,13 @@ class FileSystemTracker(
     private var brake: CompletableFuture<Unit>? = null
 
     /**
-     * If this tracker is running.
+     * If this tracker is being stopped forcibly.
      */
     @Volatile
     private var forced = false
 
     /**
-     * File system that residents at watched path.
+     * Used to watch file system.
      */
     private val watchedPathFileSystem = FileSystems.getDefault()
 
@@ -73,6 +73,8 @@ class FileSystemTracker(
      * Create brand new publisher.
      */
     private lateinit var publisher: SubmissionPublisher<TrackerEventBunch<File>>
+
+    override val isStopped get() = brake != null
 
     /**
      * Initialize existing directories.
@@ -236,7 +238,7 @@ class FileSystemTracker(
                     val rawPath = event.typedContext(StandardWatchEventKinds.ENTRY_DELETE)
                     val path = basePath.resolve(rawPath)
                     val removed = discovered.remove(path)
-                    if (removed != null && !removed.second) {
+                    if (removed != null && !removed.second && !File(path.toUri()).isDirectory) {
                         // Watch only non directory entries.
                         currentEventBunch.add(path to EventType.DELETED)
                     } else if (removed != null) {

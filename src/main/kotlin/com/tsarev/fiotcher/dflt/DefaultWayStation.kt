@@ -4,13 +4,30 @@ import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.api.flow.WayStation
 import com.tsarev.fiotcher.dflt.flows.CommonListener
 import com.tsarev.fiotcher.dflt.flows.DelegatingTransformer
-import java.util.concurrent.Executor
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Flow
 import java.util.concurrent.ForkJoinPool
 
+/**
+ * Default implementation of [WayStation] that uses [DelegatingTransformer]
+ * for asynchronous event transforming and anonymous objects for
+ * synchronous transforming.
+ */
 class DefaultWayStation(
-    private val maxCapacity: Int = Flow.defaultBufferSize(),
-    private val threadPool: Executor = ForkJoinPool.commonPool()
+    /**
+     * Max queue capacity, used for transformers.
+     */
+    private val maxTransformerCapacity: Int,
+
+    /**
+     * Executor service, used for asynchronous transformers.
+     */
+    private val transformerExecutorService: ExecutorService,
+
+    /**
+     * Executor, used at stopping.
+     */
+    private val stoppingExecutorService: ExecutorService,
 ) : WayStation {
 
     override fun <ResourceT : Any> createCommonListener(listener: (ResourceT) -> Unit) = CommonListener(listener)
@@ -23,6 +40,7 @@ class DefaultWayStation(
             override fun onComplete() = this@syncChainFrom.onComplete()
             override fun stop(force: Boolean) = this@syncChainFrom.stop(force)
             override fun askNext() = this@syncChainFrom.askNext()
+            override val isStopped get() = this@syncChainFrom.isStopped
         }
 
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncSplitFrom(transformer: (FromT) -> Collection<ToT?>?) =
@@ -35,6 +53,7 @@ class DefaultWayStation(
             override fun onComplete() = this@syncSplitFrom.onComplete()
             override fun stop(force: Boolean) = this@syncSplitFrom.stop(force)
             override fun askNext() = this@syncSplitFrom.askNext()
+            override val isStopped get() = this@syncSplitFrom.isStopped
         }
 
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncChainFrom(transformer: (FromT) -> ToT?) =
@@ -49,6 +68,6 @@ class DefaultWayStation(
 
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncDelegateFrom(
         transformer: (FromT, (ToT) -> Unit) -> Unit
-    ) = DelegatingTransformer(threadPool, maxCapacity, transformer, this)
+    ) = DelegatingTransformer(transformerExecutorService, maxTransformerCapacity, stoppingExecutorService, transformer, this)
 
 }

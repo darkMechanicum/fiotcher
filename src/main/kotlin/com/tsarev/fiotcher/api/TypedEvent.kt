@@ -1,7 +1,7 @@
 package com.tsarev.fiotcher.api
 
 /**
- * Altered in any way resource, wrapped with event type.
+ * Resource, wrapped with event type.
  */
 data class TypedEvent<T>(
     val event: T,

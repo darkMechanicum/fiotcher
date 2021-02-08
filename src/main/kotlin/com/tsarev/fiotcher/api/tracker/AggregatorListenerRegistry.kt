@@ -1,13 +1,20 @@
 package com.tsarev.fiotcher.api.tracker
 
 import com.tsarev.fiotcher.api.flow.ChainingListener
+import com.tsarev.fiotcher.api.Stoppable
 import java.util.concurrent.CompletionStage
 
 /**
  * Exception to signal, that tracker listener has been already registered for some key.
  */
-class TrackerListenerAlreadyRegistered(key: String)
-    : RuntimeException("Tracker listener for key: $key has been already registered.")
+class ListenerAlreadyRegistered(key: String)
+    : RuntimeException("Listener for key: $key has been already registered.")
+
+/**
+ * Exception to signal, that listener registry is stopping and can't register anything.
+ */
+class ListenerRegistryIsStopping
+    : RuntimeException("Listener registry is stopping and can't register anything")
 
 /**
  * Interface to separate [TrackerEvent] listening process
@@ -21,7 +28,7 @@ interface AggregatorListenerRegistry<WatchT : Any> {
     fun registerListener(
         listener: ChainingListener<TrackerEventBunch<WatchT>>,
         key: String
-    )
+    ): Stoppable
 
     /**
      * De register listener.

@@ -8,32 +8,44 @@ interface WayStation {
 
     /**
      * Create common listener.
+     *
+     * @param listener actual listening logic
      */
     fun <ResourceT : Any> createCommonListener(listener: (ResourceT) -> Unit): ChainingListener<ResourceT>
 
     /**
-     * Create proxy listener, that will handle pre converted events in new queue.
+     * Chain from listener, that will transform its events to this listener ones synchronously.
+     *
+     * @param transformer event transforming logic
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncChainFrom(
         transformer: (FromT) -> ToT?
     ): ChainingListener<FromT>
 
     /**
-     * Create proxy listener, that will handle pre converted events in new queue.
+     * Chain from listener, that will transform its events to this listener grouped ones synchronously.
+     *
+     * @param transformer event to collection transforming logic
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncSplitFrom(
         transformer: (FromT) -> Collection<ToT?>?
     ): ChainingListener<FromT>
 
     /**
-     * Create proxy listener, that will handle pre converted events in new queue.
+     * Chain from listener, that will transform its events to this listener ones
+     * asynchronously in the separate event queue.
+     *
+     * @param transformer event transforming logic
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncChainFrom(
         transformer: (FromT) -> ToT?
     ): ChainingListener<FromT>
 
     /**
-     * Create proxy listener, that will handle split events in new queue.
+     * Chain from listener, that will transform its events to this listener grouped ones
+     * asynchronously in the separate event queue.
+     *
+     * @param transformer event to collection transforming logic
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncSplitFrom(
         transformer: (FromT) -> Collection<ToT?>?
