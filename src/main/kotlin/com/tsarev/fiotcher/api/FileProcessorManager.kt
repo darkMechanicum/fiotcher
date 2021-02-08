@@ -5,7 +5,6 @@ import org.w3c.dom.Document
 import org.xml.sax.helpers.DefaultHandler
 import java.io.File
 import java.util.concurrent.CompletionStage
-import java.util.concurrent.Future
 
 /**
  * Convenient grouping of common listeners

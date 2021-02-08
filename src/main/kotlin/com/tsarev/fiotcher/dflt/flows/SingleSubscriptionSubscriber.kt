@@ -2,7 +2,6 @@ package com.tsarev.fiotcher.dflt.flows
 
 import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.api.util.Stoppable
-import java.lang.IllegalStateException
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Flow
 
@@ -67,7 +66,7 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> : ChainingListener<
     /**
      * Actual onNext handling.
      */
-    abstract fun doOnNext(item: ResourceT);
+    abstract fun doOnNext(item: ResourceT)
 
     override fun onError(throwable: Throwable?) {
         throwable?.printStackTrace()

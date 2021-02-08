@@ -1,6 +1,5 @@
 package com.tsarev.fiotcher.dflt.streams
 
-import com.tsarev.fiotcher.api.util.CannotOpenStream
 import com.tsarev.fiotcher.api.util.ResourceStreamPool
 import java.io.File
 import java.io.FileInputStream

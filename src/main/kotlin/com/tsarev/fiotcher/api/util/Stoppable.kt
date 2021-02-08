@@ -1,6 +1,5 @@
 package com.tsarev.fiotcher.api.util
 
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.TimeUnit
 
