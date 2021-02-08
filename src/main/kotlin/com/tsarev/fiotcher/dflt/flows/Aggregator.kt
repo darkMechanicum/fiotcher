@@ -40,10 +40,8 @@ class Aggregator<ResourceT : Any>(
     override val isStopped: Boolean get() = brake != null
 
     override fun subscribe(subscriber: Flow.Subscriber<in ResourceT>?) {
-        if (!isStopped) {
-            if (subscriber == null) throw NullPointerException()
-            destination.subscribe(subscriber)
-        }
+        if (subscriber == null) throw NullPointerException()
+        destination.subscribe(subscriber)
     }
 
     override fun onNext(item: ResourceT) {

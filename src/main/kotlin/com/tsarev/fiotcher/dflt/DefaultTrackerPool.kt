@@ -17,7 +17,7 @@ class DefaultTrackerPool<WatchT : Any>(
     override val trackerExecutor: ExecutorService,
 
     /**
-     * Executor, used to perform queue processing by aggregators.
+     * Executor, used to perform queue submission and processing by aggregators and trackers.
      */
     private val queueExecutorService: ExecutorService,
 
@@ -44,11 +44,6 @@ class DefaultTrackerPool<WatchT : Any>(
             override fun stop(force: Boolean) = CompletableFuture.completedFuture(Unit)
         }
     }
-
-    /**
-     * Thread pool, used to launch trackers.
-     */
-    private val threadPool = Executors.newCachedThreadPool()
 
     /**
      * Utility class to hold tracker related info.
@@ -109,7 +104,7 @@ class DefaultTrackerPool<WatchT : Any>(
                 // Try to init tracker and subscribe to its publisher.
                 // Can throw exception due to pool stopping, but we will handle it later.
                 val targetAggregator = getAggregator(key)
-                val trackerPublisher = tracker.init(resourceBundle, threadPool)
+                val trackerPublisher = tracker.init(resourceBundle, queueExecutorService)
                 trackerPublisher.subscribe(targetAggregator)
 
                 // Start tracker. From now he is treated like started.
@@ -121,7 +116,7 @@ class DefaultTrackerPool<WatchT : Any>(
                 }
 
                 // If some other tracker accidentally was in the map, so cancel tracker work.
-                if (newTracker != tracker) handle.cancel(true)
+                if (newTracker?.tracker !== tracker) handle.cancel(true)
 
                 resultFuture.complete(stoppableWrapper)
 
@@ -221,7 +216,11 @@ class DefaultTrackerPool<WatchT : Any>(
             .reduce { first, second -> first.thenAcceptBoth(second) { _, _ -> } }
 
         val executorShutDownFuture: CompletionStage<*> = CompletableFuture.supplyAsync(
-            { if (force) threadPool.shutdownNow() else threadPool.shutdown() }, stoppingExecutorService
+            {
+                if (force) trackerExecutor.shutdownNow() else trackerExecutor.shutdown()
+                if (force) queueExecutorService.shutdownNow() else queueExecutorService.shutdown()
+                if (force) registrationExecutorService.shutdownNow() else registrationExecutorService.shutdown()
+            }, stoppingExecutorService
         )
 
         // Combine all futures in one and clear resources after their completion.
@@ -231,6 +230,7 @@ class DefaultTrackerPool<WatchT : Any>(
                 registeredTrackers.clear()
                 registeredListeners.clear()
                 aggregators.clear()
+
                 brake!!.complete(Unit)
             }
 

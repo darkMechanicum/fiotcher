@@ -28,7 +28,7 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> : ChainingListener<
     @Volatile
     private var brake: CompletableFuture<*>? = null
 
-    override val isStopped get() = brake != null
+    override val isStopped get() = Thread.currentThread().isInterrupted || brake != null
 
     /**
      * Stop by cancelling subscription.
