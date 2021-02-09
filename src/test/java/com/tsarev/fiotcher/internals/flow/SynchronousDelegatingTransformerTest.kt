@@ -25,7 +25,7 @@ class SynchronousDelegatingTransformerTest {
         val publisher = SubmissionPublisher<String>(callerThreadTestExecutor, 10)
 
         // Test.
-        val listener = DelegatingTransformer<String, String>(
+        val listener = DelegatingTransformer<String, String, CommonListener<String>>(
             callerThreadTestExecutor,
             10,
             chained,
@@ -55,7 +55,7 @@ class SynchronousDelegatingTransformerTest {
         val publisher = SubmissionPublisher<String>(callerThreadTestExecutor, 10)
 
         // Test.
-        val listener = DelegatingTransformer<String, String>(
+        val listener = DelegatingTransformer<String, String, CommonListener<String>>(
             callerThreadTestExecutor,
             10,
             chained,
@@ -84,7 +84,7 @@ class SynchronousDelegatingTransformerTest {
         val publisher = SubmissionPublisher<String>(callerThreadTestExecutor, 10)
 
         // Test.
-        val listener = DelegatingTransformer<String, String>(
+        val listener = DelegatingTransformer<String, String, CommonListener<String>>(
             callerThreadTestExecutor,
             10,
             chained,
@@ -111,7 +111,7 @@ class SynchronousDelegatingTransformerTest {
         val publisher = SubmissionPublisher<String>(callerThreadTestExecutor, 10)
 
         // Test.
-        val listener = DelegatingTransformer<String, String>(
+        val listener = DelegatingTransformer<String, String, CommonListener<String>>(
             callerThreadTestExecutor,
             10,
             chained,

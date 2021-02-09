@@ -167,7 +167,7 @@ class FileSystemTrackerTest {
     @Test
     fun `test gracefully stop with debounce`() {
         // --- Prepare ---
-        val tracker = FileSystemTracker(debounceTimeoutMs = 200, recursive = true)
+        val tracker = FileSystemTracker(debounceTimeoutMs = 400, recursive = true)
         val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
         val subscriber = object : Flow.Subscriber<TrackerEventBunch<File>> {
             override fun onNext(item: TrackerEventBunch<File>?) {
@@ -193,8 +193,9 @@ class FileSystemTrackerTest {
 
         // Test creation.
         val someFile = tempDir.createFile("someFile")
+        Thread.sleep(100)
         tracker.stop(false)
-        Thread.sleep(50)
+        Thread.sleep(100)
         val someFile2 = tempDir.createFile("someFile2")
         val someFile3 = tempDir.createFile("someFile3")
         testAsync.assertEvent("files changed") // Higher timeout

@@ -8,14 +8,15 @@ import java.util.concurrent.*
 /**
  * Resource transformer, that delegates to passed function how to split and publish.
  */
-class DelegatingTransformer<FromT : Any, ToT : Any>(
+class DelegatingTransformer<FromT : Any, ToT : Any, ListenerT>(
     executor: Executor = ForkJoinPool.commonPool(),
     maxCapacity: Int = Flow.defaultBufferSize(),
-    private val chained: ChainingListener<ToT>,
+    private val chained: ListenerT,
     private val stoppingExecutor: Executor,
     private val onSubscribeHandler: (Flow.Subscription) -> Unit = {},
     private val transform: (FromT, (ToT) -> Unit) -> Unit,
-) : SingleSubscriptionSubscriber<FromT>(), Flow.Processor<FromT, ToT> {
+) : SingleSubscriptionSubscriber<FromT>(), Flow.Processor<FromT, ToT>
+where ListenerT: ChainingListener<ToT>, ListenerT: Flow.Subscriber<ToT> {
 
     private val destination = SubmissionPublisher<ToT>(executor, maxCapacity)
 
@@ -31,7 +32,7 @@ class DelegatingTransformer<FromT : Any, ToT : Any>(
         transform(item) {
             destination.submit(it)
         }
-        askNext()
+        subscription?.request(1)
     }
 
     override fun doOnError(throwable: Throwable) {

@@ -38,7 +38,7 @@ class AsynchronousDelegatingTransformerTest {
         val publisher = SubmissionPublisher<String>(executor, 10)
 
         // Test.
-        val listener = DelegatingTransformer<String, String>(
+        val listener = DelegatingTransformer<String, String, CommonListener<String>>(
             executor = executor,
             maxCapacity = 10,
             chained = chained,
@@ -94,7 +94,7 @@ class AsynchronousDelegatingTransformerTest {
         val publisher = SubmissionPublisher<String>(executor, 10)
 
         // Test.
-        val listener = DelegatingTransformer<String, String>(
+        val listener = DelegatingTransformer<String, String, CommonListener<String>>(
             executor = executor,
             maxCapacity = 10,
             chained = chained,
@@ -166,7 +166,7 @@ class AsynchronousDelegatingTransformerTest {
 
         // --- Prepare ---
         // Start listener.
-        val listener = DelegatingTransformer<String, String>(
+        val listener = DelegatingTransformer<String, String, CommonListener<String>>(
             executor = listenerExecutor,
             maxCapacity = 10,
             chained = chained,
@@ -244,7 +244,7 @@ class AsynchronousDelegatingTransformerTest {
 
         // --- Prepare ---
         // Start listener.
-        val listener = DelegatingTransformer<String, String>(
+        val listener = DelegatingTransformer<String, String, CommonListener<String>>(
             executor = innerExecutor,
             maxCapacity = 10,
             chained = chained,

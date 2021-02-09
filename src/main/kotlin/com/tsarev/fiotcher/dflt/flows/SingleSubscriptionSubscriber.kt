@@ -5,12 +5,14 @@ import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.dflt.Brake
 import com.tsarev.fiotcher.dflt.pushCompleted
+import java.util.concurrent.Executor
 import java.util.concurrent.Flow
 
 /**
  * Common methods for [Flow.Subscriber] with only one [Flow.Subscription].
  */
-abstract class SingleSubscriptionSubscriber<ResourceT : Any> : ChainingListener<ResourceT>, Stoppable {
+abstract class SingleSubscriptionSubscriber<ResourceT : Any> :
+    Flow.Subscriber<ResourceT>, ChainingListener<ResourceT>, Stoppable {
 
     /**
      * Registered subscription.
@@ -64,12 +66,6 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> : ChainingListener<
         }
     }
 
-    override fun askNext() {
-        if (!isStopped) {
-            _subscription?.request(1)
-        }
-    }
-
     /**
      * Actual onNext handling.
      */
@@ -89,5 +85,30 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> : ChainingListener<
 
     override fun onComplete() {
         // no-op
+    }
+
+    override fun <FromT : Any> doSyncDelegateFrom(
+        transformer: (FromT, (ResourceT) -> Unit) -> Unit
+    ) = SyncDelegatedAdapter(this, transformer)
+
+    override fun <FromT : Any> doAsyncDelegateFrom(
+        executor: Executor,
+        stoppingExecutor: Executor,
+        maxCapacity: Int,
+        transformer: (FromT, (ResourceT) -> Unit) -> Unit
+    ): ChainingListener<FromT> = DelegatingTransformer(
+        executor = executor,
+        chained = this,
+        maxCapacity = maxCapacity,
+        stoppingExecutor = stoppingExecutor,
+        transform = transformer
+    )
+
+    class SyncDelegatedAdapter<ToT: Any, FromT : Any>(
+        private val delegate: SingleSubscriptionSubscriber<ToT>,
+        private val transformer: (FromT, (ToT) -> Unit) -> Unit
+    ) : SingleSubscriptionSubscriber<FromT>() {
+        override fun onError(throwable: Throwable) = delegate.onError(throwable)
+        override fun doOnNext(item: FromT) = transformer(item) { delegate.doOnNext(it) }
     }
 }

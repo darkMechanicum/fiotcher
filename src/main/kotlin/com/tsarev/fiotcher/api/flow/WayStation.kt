@@ -32,6 +32,16 @@ interface WayStation {
     ): ChainingListener<FromT>
 
     /**
+     * Create proxy listener, that will handle split events in same queue and thread.
+     *
+     * @transformer a function that accepts [FromT] event and function to publish it further,
+     * thus allowing to make a number of publishing on its desire.
+     */
+    fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncDelegateFrom(
+        transformer: (FromT, (ToT) -> Unit) -> Unit
+    ): ChainingListener<FromT>
+
+    /**
      * Chain from listener, that will transform its events to this listener ones
      * asynchronously in the separate event queue.
      *
