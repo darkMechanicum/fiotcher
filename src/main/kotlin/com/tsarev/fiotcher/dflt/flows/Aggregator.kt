@@ -18,15 +18,15 @@ import java.util.concurrent.atomic.AtomicReference
  * work until any new subscription by it.
  */
 class Aggregator<ResourceT : Any>(
-    executorService: ExecutorService = ForkJoinPool.commonPool(),
+    executor: Executor = ForkJoinPool.commonPool(),
     maxCapacity: Int = Flow.defaultBufferSize(),
-    initialListening: Boolean = false
+    private val onSubscribeHandler: (Flow.Subscription) -> Unit = { }
 ) : Flow.Processor<ResourceT, ResourceT>, Stoppable {
 
     /**
      * Aggregator publisher.
      */
-    private val destination = SubmissionPublisher<ResourceT>(executorService, maxCapacity)
+    private val destination = SubmissionPublisher<ResourceT>(executor, maxCapacity)
 
     /**
      * Registered subscriptions.
@@ -36,9 +36,7 @@ class Aggregator<ResourceT : Any>(
     /**
      * Listening brake flag.
      */
-    private val brake: Brake<Unit> =
-        if (initialListening) AtomicReference(null)
-        else AtomicReference(CompletableFuture.completedFuture(Unit))
+    private val brake: Brake<Unit> = Brake()
 
     override val isStopped: Boolean get() = brake.get() != null
 
@@ -71,6 +69,7 @@ class Aggregator<ResourceT : Any>(
                 subscriptions += subscription
             }
             subscription.request(Long.MAX_VALUE)
+            onSubscribeHandler(subscription)
         } else {
             throw IllegalStateException("Aggregator is closed.")
         }

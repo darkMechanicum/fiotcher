@@ -1,6 +1,8 @@
 package com.tsarev.fiotcher.dflt.flows
 
 import com.tsarev.fiotcher.api.flow.ChainingListener
+import com.tsarev.fiotcher.dflt.Brake
+import com.tsarev.fiotcher.dflt.push
 import java.util.concurrent.*
 
 /**
@@ -9,9 +11,10 @@ import java.util.concurrent.*
 class DelegatingTransformer<FromT : Any, ToT : Any>(
     executor: Executor = ForkJoinPool.commonPool(),
     maxCapacity: Int = Flow.defaultBufferSize(),
-    private val stoppingExecutor: ExecutorService,
+    private val chained: ChainingListener<ToT>,
+    private val stoppingExecutor: Executor,
+    private val onSubscribeHandler: (Flow.Subscription) -> Unit = {},
     private val transform: (FromT, (ToT) -> Unit) -> Unit,
-    private val chained: ChainingListener<ToT>
 ) : SingleSubscriptionSubscriber<FromT>(), Flow.Processor<FromT, ToT> {
 
     private val destination = SubmissionPublisher<ToT>(executor, maxCapacity)
@@ -25,22 +28,29 @@ class DelegatingTransformer<FromT : Any, ToT : Any>(
     }
 
     override fun doOnNext(item: FromT) {
-        var pushed = false
         transform(item) {
-            pushed = true
             destination.submit(it)
         }
-        if (!pushed) {
-            askNext()
-        }
+        askNext()
     }
 
-    override fun stop(force: Boolean): CompletableFuture<*> {
-        return super.stop(force)
+    override fun doOnError(throwable: Throwable) {
+        chained.onError(throwable)
+    }
+
+    private val additionalBrake = Brake<Unit>()
+
+    override fun stop(force: Boolean) = additionalBrake.push {
+        super.stop(force)
             .runAfterBoth(loopForEventsCompletion(force)) {
                 destination.close()
                 chained.stop(force)
+                it.complete(Unit)
             }
+    }
+
+    override fun doOnSubscribe(subscription: Flow.Subscription) {
+        onSubscribeHandler(subscription)
     }
 
     /**

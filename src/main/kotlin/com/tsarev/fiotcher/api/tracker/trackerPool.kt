@@ -6,18 +6,6 @@ import java.util.concurrent.Executor
 
 
 /**
- * Exception to signal, that tracker has been already registered for some URI.
- */
-class TrackerAlreadyRegistered(resource: Any, key: String)
-    : RuntimeException("Tracker for resource: $resource and key: $key has been already registered.")
-
-/**
- * Exception to signal, that tracker pool is stopping and can't register anything.
- */
-class PoolIsStopping
-    : RuntimeException("Tracker pool is stopping and can't register anything")
-
-/**
  * Tracker pool that managers trackers execution.
  * Allows to create, start, stop and monitor trackers.
  *

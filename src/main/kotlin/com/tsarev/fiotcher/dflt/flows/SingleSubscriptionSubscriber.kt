@@ -1,5 +1,6 @@
 package com.tsarev.fiotcher.dflt.flows
 
+import com.tsarev.fiotcher.api.ListenerIsStopped
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.dflt.Brake
@@ -42,10 +43,18 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> : ChainingListener<
      * Request maximum of entries and store subscription.
      */
     override fun onSubscribe(subscription: Flow.Subscription) {
-        if (isStopped) throw IllegalStateException("Cannot subscribe when stopped.")
-        if (_subscription != null) throw IllegalStateException("Cannot subscribe to multiple publishers.")
+        if (isStopped) throw ListenerIsStopped("Cannot subscribe when stopped.")
+        if (_subscription != null) throw ListenerIsStopped("Cannot subscribe to multiple publishers.")
         _subscription = subscription
         subscription.request(1) // Ask for single element.
+        doOnSubscribe(subscription)
+    }
+
+    /**
+     * Additional on subscribe logic.
+     */
+    open fun doOnSubscribe(subscription: Flow.Subscription) {
+
     }
 
     override fun onNext(item: ResourceT) {
@@ -66,8 +75,16 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> : ChainingListener<
      */
     abstract fun doOnNext(item: ResourceT)
 
-    override fun onError(throwable: Throwable?) {
-        throwable?.printStackTrace()
+    override fun onError(throwable: Throwable) {
+        throwable.printStackTrace()
+        doOnError(throwable)
+    }
+
+    /**
+     * Additional on error logic.
+     */
+    open fun doOnError(throwable: Throwable) {
+
     }
 
     override fun onComplete() {

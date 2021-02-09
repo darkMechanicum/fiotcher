@@ -1,6 +1,5 @@
 package com.tsarev.fiotcher.dflt
 
-import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.api.flow.WayStation
 import com.tsarev.fiotcher.dflt.flows.CommonListener
@@ -21,26 +20,18 @@ class DefaultWayStation(
     /**
      * Executor service, used for asynchronous transformers.
      */
-    transformerExecutorService: ExecutorService,
+    private val transformerExecutorService: ExecutorService,
 
     /**
      * Executor, used at stopping.
      */
     private val stoppingExecutorService: ExecutorService,
-) : WayStation, Stoppable {
+) : WayStation {
 
     /**
      * Stopping brake.
      */
     private val brake = Brake<Unit>()
-
-    /**
-     * Proxied executor service to await for all non done transform tasks.
-     */
-    private val proxiedTransformerExecutorService =
-        RememberingExecutorServiceProxy(transformerExecutorService, stoppingExecutorService)
-
-    override val isStopped get() = brake.get() != null
 
     override fun <ResourceT : Any> createCommonListener(listener: (ResourceT) -> Unit) = CommonListener(listener)
 
@@ -80,94 +71,10 @@ class DefaultWayStation(
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncDelegateFrom(
         transformer: (FromT, (ToT) -> Unit) -> Unit
     ) = DelegatingTransformer(
-        proxiedTransformerExecutorService,
-        maxTransformerCapacity,
-        stoppingExecutorService,
-        transformer,
-        this
+        executor = transformerExecutorService,
+        maxCapacity = maxTransformerCapacity,
+        chained = this,
+        stoppingExecutor = stoppingExecutorService,
+        transform = transformer,
     )
-
-    override fun stop(force: Boolean) = brake.push { brk ->
-        if (!brake.compareAndSet(null, CompletableFuture())) return brake.get()!!
-
-        // Try to terminate fast or await for running and potentially generated tasks.
-        if (force) {
-            proxiedTransformerExecutorService.fastShutdown()
-                .thenAccept { brk.complete(Unit) }
-        } else {
-            proxiedTransformerExecutorService.slowShutdown()
-                .thenAccept { brk.complete(Unit) }
-        }
-    }
-
-    /**
-     * Simple proxy to remember all task futures to wait for them at need.
-     */
-    private class RememberingExecutorServiceProxy(
-        /**
-         * Executor, used at stopping.
-         */
-        private val stoppingExecutorService: ExecutorService,
-
-        /**
-         * Delegate.
-         */
-        private val delegate: ExecutorService,
-    ) : ExecutorService by delegate {
-
-        /**
-         * List of registered futures.
-         */
-        private val rememberedFutures = ConcurrentLinkedQueue<Future<*>>()
-
-        /**
-         * Overridden variant of shutdown to clear futures and cancel every future.
-         */
-        fun fastShutdown() = CompletableFuture.runAsync({
-            delegate.shutdownNow()
-            rememberedFutures.forEach { it.cancel(true) }
-            rememberedFutures.clear()
-        }, stoppingExecutorService)
-
-        /**
-         * Try to wait for all tasks completion, assuming that
-         * task generation will eventually stop.
-         */
-        fun slowShutdown() = CompletableFuture.runAsync({
-            while (!rememberedFutures.isEmpty()) {
-                val futureIterator = rememberedFutures.iterator()
-                while (futureIterator.hasNext()) {
-                    val future = futureIterator.next()
-                    future.get()
-                    futureIterator.remove()
-                }
-            }
-            delegate.shutdown()
-        }, stoppingExecutorService)
-
-        override fun execute(command: Runnable) = submit<Unit> { command.run() }.also { rememberedFutures += it }.let {}
-
-        override fun <T : Any?> submit(task: Callable<T>) = delegate.submit(task).also { rememberedFutures += it }
-
-        override fun <T : Any?> submit(task: Runnable, result: T) =
-            delegate.submit(task, result).also { rememberedFutures += it }
-
-        override fun submit(task: Runnable) = delegate.submit(task).also { rememberedFutures += it }
-
-        override fun <T : Any?> invokeAll(tasks: MutableCollection<out Callable<T>>) =
-            delegate.invokeAll(tasks).also { rememberedFutures += it.filterNotNull() }
-
-        override fun <T : Any?> invokeAll(
-            tasks: MutableCollection<out Callable<T>>,
-            timeout: Long,
-            unit: TimeUnit
-        ) = delegate.invokeAll(tasks, timeout, unit).also { rememberedFutures += it.filterNotNull() }
-
-        override fun <T : Any?> invokeAny(tasks: MutableCollection<out Callable<T>>) =
-            throw UnsupportedOperationException("RememberingExecutorService does not support some batch operations")
-
-        override fun <T : Any?> invokeAny(tasks: MutableCollection<out Callable<T>>, timeout: Long, unit: TimeUnit) =
-            throw UnsupportedOperationException("RememberingExecutorService does not support some batch operations")
-
-    }
 }
