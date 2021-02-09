@@ -1,5 +1,8 @@
 # Must do
+_Done:_
 1. Remove Flow API from outer API
+
+_Not done:_
 1. Class typed keys for an aggregator and listeners registry
 1. Remove types from events (for now, there isn't much use of them )
 1. Error passing API
