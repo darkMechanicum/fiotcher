@@ -32,8 +32,7 @@ class DefaultWayStation(
     /**
      * Stopping brake.
      */
-    @Volatile
-    private var brake: CompletableFuture<Unit>? = null
+    private val brake = Brake<Unit>()
 
     /**
      * Proxied executor service to await for all non done transform tasks.
@@ -41,7 +40,7 @@ class DefaultWayStation(
     private val proxiedTransformerExecutorService =
         RememberingExecutorServiceProxy(transformerExecutorService, stoppingExecutorService)
 
-    override val isStopped get() = brake != null
+    override val isStopped get() = brake.get() != null
 
     override fun <ResourceT : Any> createCommonListener(listener: (ResourceT) -> Unit) = CommonListener(listener)
 
@@ -88,23 +87,17 @@ class DefaultWayStation(
         this
     )
 
-    override fun stop(force: Boolean): CompletionStage<*> {
-        brake?.let { return@stop it }
-        synchronized(this) {
-            brake?.let { return@stop it }
-            brake = CompletableFuture()
-        }
+    override fun stop(force: Boolean) = brake.push { brk ->
+        if (!brake.compareAndSet(null, CompletableFuture())) return brake.get()!!
 
         // Try to terminate fast or await for running and potentially generated tasks.
         if (force) {
             proxiedTransformerExecutorService.fastShutdown()
-                .thenAccept { brake?.complete(Unit) }
+                .thenAccept { brk.complete(Unit) }
         } else {
             proxiedTransformerExecutorService.slowShutdown()
-                .thenAccept { brake?.complete(Unit) }
+                .thenAccept { brk.complete(Unit) }
         }
-
-        return brake!!
     }
 
     /**

@@ -3,8 +3,8 @@ package com.tsarev.fiotcher.dflt
 import com.tsarev.fiotcher.api.EventType
 import com.tsarev.fiotcher.api.FileProcessorManager
 import com.tsarev.fiotcher.api.Processor
-import com.tsarev.fiotcher.api.tracker.TrackerEventBunch
 import com.tsarev.fiotcher.api.Stoppable
+import com.tsarev.fiotcher.api.tracker.TrackerEventBunch
 import com.tsarev.fiotcher.dflt.streams.NaiveFileStreamPool
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
 import org.w3c.dom.Document

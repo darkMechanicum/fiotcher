@@ -1,7 +1,7 @@
 package com.tsarev.fiotcher.api.tracker
 
-import com.tsarev.fiotcher.api.TypedEvent
 import com.tsarev.fiotcher.api.Stoppable
+import com.tsarev.fiotcher.api.TypedEvent
 import java.util.concurrent.Executor
 import java.util.concurrent.Flow
 import java.util.concurrent.ForkJoinPool

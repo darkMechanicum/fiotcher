@@ -1,8 +1,8 @@
 package com.tsarev.fiotcher.dflt
 
+import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.api.tracker.*
-import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.flows.Aggregator
 import java.util.concurrent.*
 
@@ -72,8 +72,7 @@ class DefaultTrackerPool<WatchT : Any>(
     /**
      * Stopping brake.
      */
-    @Volatile
-    private var brake: CompletableFuture<Unit>? = null
+    private val brake = Brake<Unit>()
 
     override fun startTracker(
         resourceBundle: WatchT,
@@ -189,17 +188,9 @@ class DefaultTrackerPool<WatchT : Any>(
         ) else CompletableFuture.completedFuture(Unit)
     }
 
-    override val isStopped get() = brake != null
+    override val isStopped get() = brake.get() != null
 
-    override fun stop(force: Boolean): CompletionStage<*> {
-        // Sync on the pool to handle stopping properly.
-        synchronized(this) {
-            val brakeCopy = brake
-            // From this moment no new trackers will be added.
-            if (brakeCopy != null) return brakeCopy
-            brake = CompletableFuture<Unit>()
-        }
-
+    override fun stop(force: Boolean) = brake.push { brk ->
         val trackersCopy = HashMap(registeredTrackers)
         val allTrackersStopFuture = trackersCopy
             .map { (key, value) -> doStopTracker(key.first, key.second, force, value.tracker) }
@@ -224,18 +215,15 @@ class DefaultTrackerPool<WatchT : Any>(
         )
 
         // Combine all futures in one and clear resources after their completion.
+        // Order matters here.
         allTrackersStopFuture.thenAcceptBoth(allListenersStopFuture) { _, _ -> }
             .thenAcceptBoth(allAggregatorsStopFuture) { _, _ -> }
             .thenAcceptBoth(executorShutDownFuture) { _, _ ->
                 registeredTrackers.clear()
                 registeredListeners.clear()
                 aggregators.clear()
-
-                brake!!.complete(Unit)
+                brk.complete(Unit)
             }
-
-        // Brake is guaranteed to be not null here.
-        return brake!!
     }
 
     /**

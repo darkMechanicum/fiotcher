@@ -1,7 +1,7 @@
 package com.tsarev.fiotcher.api.tracker
 
-import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.api.Stoppable
+import com.tsarev.fiotcher.api.flow.ChainingListener
 import java.util.concurrent.CompletionStage
 
 /**

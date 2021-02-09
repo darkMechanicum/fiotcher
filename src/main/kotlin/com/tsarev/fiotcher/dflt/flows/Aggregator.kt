@@ -1,7 +1,9 @@
 package com.tsarev.fiotcher.dflt.flows
 
 import com.tsarev.fiotcher.api.Stoppable
+import com.tsarev.fiotcher.dflt.Brake
 import java.util.concurrent.*
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * This is [Flow.Processor] that subscribes to lots of
@@ -34,10 +36,11 @@ class Aggregator<ResourceT : Any>(
     /**
      * Listening brake flag.
      */
-    @Volatile
-    private var brake: CompletableFuture<*>? = if (initialListening) null else CompletableFuture.completedFuture(Unit)
+    private val brake: Brake<Unit> =
+        if (initialListening) AtomicReference(null)
+        else AtomicReference(CompletableFuture.completedFuture(Unit))
 
-    override val isStopped: Boolean get() = brake != null
+    override val isStopped: Boolean get() = brake.get() != null
 
     override fun subscribe(subscriber: Flow.Subscriber<in ResourceT>?) {
         if (subscriber == null) throw NullPointerException()
@@ -49,25 +52,22 @@ class Aggregator<ResourceT : Any>(
     }
 
     override fun stop(force: Boolean): CompletableFuture<*> {
-        val brakeCopy = brake
-        if (brakeCopy != null) return brakeCopy
-        val copy: ArrayList<Flow.Subscription>
+        brake.get()?.let { return it }
+        val copy: List<Flow.Subscription>
         synchronized(this) {
-            val syncBrakeCopy = brake
-            if (syncBrakeCopy != null) return syncBrakeCopy
-            brake = CompletableFuture<Unit>()
-            copy = ArrayList(subscriptions)
+            brake.compareAndExchange(null, CompletableFuture<Unit>())?.let { return it }
+            copy = subscriptions.toList()
             subscriptions.clear()
         }
         copy.forEach { it.cancel() }
-        return CompletableFuture.completedFuture(Unit)
+        return brake.get()!!
     }
 
     override fun onSubscribe(subscription: Flow.Subscription) {
         if (!destination.isClosed) {
             // What can we do with this in the current Flow API?
             synchronized(this) {
-                brake = null
+                brake.set(null)
                 subscriptions += subscription
             }
             subscription.request(Long.MAX_VALUE)

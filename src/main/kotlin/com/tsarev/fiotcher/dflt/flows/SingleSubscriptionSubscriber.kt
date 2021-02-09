@@ -2,7 +2,8 @@ package com.tsarev.fiotcher.dflt.flows
 
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.api.flow.ChainingListener
-import java.util.concurrent.CompletableFuture
+import com.tsarev.fiotcher.dflt.Brake
+import com.tsarev.fiotcher.dflt.pushCompleted
 import java.util.concurrent.Flow
 
 /**
@@ -25,21 +26,16 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> : ChainingListener<
     /**
      * Stopped flag.
      */
-    @Volatile
-    private var brake: CompletableFuture<*>? = null
+    private val brake = Brake<Unit>()
 
-    override val isStopped get() = Thread.currentThread().isInterrupted || brake != null
+    override val isStopped get() = Thread.currentThread().isInterrupted || brake.get() != null
 
     /**
      * Stop by cancelling subscription.
      */
-    override fun stop(force: Boolean): CompletableFuture<*> {
-        return brake ?: synchronized(this) { // Null check.
-            brake?.let { return@stop it } // Null check.
-            _subscription?.cancel()
-            _subscription = null
-            CompletableFuture.completedFuture(Unit).also { brake = it }
-        }
+    override fun stop(force: Boolean) = brake.pushCompleted(Unit) {
+        _subscription?.cancel()
+        _subscription = null
     }
 
     /**

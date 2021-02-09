@@ -4,6 +4,8 @@ import com.tsarev.fiotcher.api.EventType
 import com.tsarev.fiotcher.api.tracker.Tracker
 import com.tsarev.fiotcher.api.tracker.TrackerEvent
 import com.tsarev.fiotcher.api.tracker.TrackerEventBunch
+import com.tsarev.fiotcher.dflt.Brake
+import com.tsarev.fiotcher.dflt.push
 import java.io.File
 import java.nio.file.*
 import java.time.Instant
@@ -40,8 +42,7 @@ class FileSystemTracker(
     /**
      * If this tracker is running.
      */
-    @Volatile
-    private var brake: CompletableFuture<Unit>? = null
+    private val brake = Brake<Unit>()
 
     /**
      * If this tracker is being stopped forcibly.
@@ -74,7 +75,7 @@ class FileSystemTracker(
      */
     private lateinit var publisher: SubmissionPublisher<TrackerEventBunch<File>>
 
-    override val isStopped get() = brake != null
+    override val isStopped get() = brake.get() != null
 
     /**
      * Initialize existing directories.
@@ -270,35 +271,20 @@ class FileSystemTracker(
     /**
      * Do stop.
      */
-    override fun stop(force: Boolean): CompletableFuture<*> {
+    override fun stop(force: Boolean) = brake.push {
         this.forced = force
-        return brake ?: doCreateBrake()
-    }
-
-    /**
-     * Create brake with sync.
-     */
-    private fun doCreateBrake() = synchronized(this) {
-        brake ?: CompletableFuture<Unit>()
-            .also { this.brake = it }
-            .apply {
-                thenAccept {
-                    this@FileSystemTracker.watchService.close()
-                }
-            }
+        this@FileSystemTracker.watchService.close()
     }
 
     /**
      * Create brake synchronously.
      */
-    private fun doStopBrake() = synchronized(this) {
-        brake?.also { it.complete(Unit) } ?: CompletableFuture.completedFuture(Unit).also { brake = it }
-    }
+    private fun doStopBrake() = brake.push().complete(Unit)
 
     /**
      * Check, whether this [Tracker] is stopping.
      */
-    private fun isStopping() = this.brake != null || Thread.currentThread().isInterrupted
+    private fun isStopping() = brake.get() != null || Thread.currentThread().isInterrupted
 
     /**
      * Extension to hide casting.
