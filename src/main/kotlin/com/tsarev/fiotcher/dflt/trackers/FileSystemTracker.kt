@@ -214,7 +214,7 @@ class FileSystemTracker(
                     val rawPath = event.typedContext(StandardWatchEventKinds.ENTRY_CREATE)
                     val path = basePath.resolve(rawPath)
                     updatePath(path)?.also {
-                        if (this.recursive && File(path.toUri()).isDirectory) {
+                        if (this.recursive && path.toFile().isDirectory) {
                             registerDirectory(path)
                         } else {
                             currentEventBunch.add(it to EventType.CREATED)
@@ -227,7 +227,7 @@ class FileSystemTracker(
                     val rawPath = event.typedContext(StandardWatchEventKinds.ENTRY_MODIFY)
                     val path = basePath.resolve(rawPath)
                     updatePath(path)?.also {
-                        if (!File(path.toUri()).isDirectory) {
+                        if (!path.toFile().isDirectory) {
                             // Watch only non directory entries.
                             currentEventBunch.add(it to EventType.CHANGED)
                         }
@@ -239,7 +239,7 @@ class FileSystemTracker(
                     val rawPath = event.typedContext(StandardWatchEventKinds.ENTRY_DELETE)
                     val path = basePath.resolve(rawPath)
                     val removed = discovered.remove(path)
-                    if (removed != null && !removed.second && !File(path.toUri()).isDirectory) {
+                    if (removed != null && !removed.second && !path.toFile().isDirectory) {
                         // Watch only non directory entries.
                         currentEventBunch.add(path to EventType.DELETED)
                     } else if (removed != null) {
@@ -248,7 +248,7 @@ class FileSystemTracker(
                 }
             }
         }
-        return currentEventBunch.map { InnerEvent(it.second, File(it.first.toAbsolutePath().toUri())) }
+        return currentEventBunch.map { InnerEvent(it.second, it.first.toAbsolutePath().toFile()) }
     }
 
     /**
@@ -261,7 +261,7 @@ class FileSystemTracker(
         val oldTimeStamp = discovered[path]?.first
         val now = Instant.now()
         return if (oldTimeStamp == null || now.isAfter(oldTimeStamp)) {
-            discovered[path] = Pair(now, File(path.toUri()).isDirectory)
+            discovered[path] = Pair(now, path.toFile().isDirectory)
             path
         } else {
             null
