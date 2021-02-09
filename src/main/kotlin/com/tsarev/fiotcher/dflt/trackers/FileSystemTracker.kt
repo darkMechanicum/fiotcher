@@ -9,28 +9,31 @@ import com.tsarev.fiotcher.dflt.push
 import java.io.File
 import java.nio.file.*
 import java.time.Instant
-import java.util.concurrent.*
+import java.util.concurrent.Executor
+import java.util.concurrent.Flow
+import java.util.concurrent.SubmissionPublisher
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Tracker, that monitors file changes on local file system.
  *
- * This tracker ignored directories.
+ * This tracker ignores directories - it does not send events for them.
+ *
+ * See parameters as class fields.
  */
 class FileSystemTracker(
     /**
-     * Timeout to wait until stop checking.
+     * Graceful stop checking period.
      */
     private val checkForStopTimeoutMs: Long = 100,
 
     /**
      * Timeout to debounce time close changed files.
+     *
+     * Turns off debounce if less or equal zero.
      */
-    private val debounceTimeoutMs: Long = 10,
-
-    /**
-     * Maximum debounce tries.
-     */
-    private val debounceMax: Long = 10,
+    private val debounceTimeoutMs: Long = 20,
 
     /**
      * If should track directories recursively.
@@ -38,6 +41,11 @@ class FileSystemTracker(
     private val recursive: Boolean = true,
 
     ) : Tracker<File>() {
+
+    /**
+     * If debounce is enabled.
+     */
+    private val debounceEnabled = debounceTimeoutMs > 0
 
     /**
      * If this tracker is running.
@@ -48,7 +56,7 @@ class FileSystemTracker(
      * If this tracker is being stopped forcibly.
      */
     @Volatile
-    private var forced = false
+    private var forced = AtomicBoolean(false)
 
     /**
      * Used to watch file system.
@@ -104,15 +112,16 @@ class FileSystemTracker(
                         // Try to preserve order of events. It can be (or can be not) important.
                         val allEntries = LinkedHashSet<InnerEvent>()
                         allEntries.addNewEntries(processDirectoryEvent(key))
-                        var currentDebounce = 0
-                        while (!forced && currentDebounce < debounceMax) {
+                        val currentTimeMillis = System.currentTimeMillis()
+                        val endTime = currentTimeMillis + debounceTimeoutMs
+                        while (debounceEnabled && !forced.get()) {
                             try {
                                 // Reset previous key recklessly - finally at the bottom will do the job at failure.
                                 key?.reset()
                                 key = watchService.poll(debounceTimeoutMs, TimeUnit.MILLISECONDS)
+                                if (endTime < System.currentTimeMillis()) break
                                 if (key == null) break
                                 allEntries.addNewEntries(processDirectoryEvent(key))
-                                currentDebounce++
                             } catch (interrupted: InterruptedException) {
                                 doStopBrake() // Set to stop, but continue debounce.
                             }
@@ -152,9 +161,13 @@ class FileSystemTracker(
                 EventType.CREATED -> if (this.contains(deletedCopy)) {
                     this -= deletedCopy
                     this += createdCopy
+                } else {
+                    this += createdCopy
                 }
                 EventType.DELETED -> if (this.contains(createdCopy)) {
                     this -= createdCopy
+                    this += deletedCopy
+                } else {
                     this += deletedCopy
                 }
             }
@@ -213,11 +226,12 @@ class FileSystemTracker(
                     // Also, if it is a directory - register it for watching.
                     val rawPath = event.typedContext(StandardWatchEventKinds.ENTRY_CREATE)
                     val path = basePath.resolve(rawPath)
-                    updatePath(path)?.also {
-                        if (this.recursive && path.toFile().isDirectory) {
-                            registerDirectory(path)
+                    if (updatePath(path)) {
+                        val asFile = path.toFile()
+                        if (this.recursive && asFile.isDirectory) {
+                            registerRecursively(asFile)
                         } else {
-                            currentEventBunch.add(it to EventType.CREATED)
+                            currentEventBunch.add(path to EventType.CREATED)
                         }
                     }
                 }
@@ -226,10 +240,10 @@ class FileSystemTracker(
                     // Also, collect it for event if it is not a directory.
                     val rawPath = event.typedContext(StandardWatchEventKinds.ENTRY_MODIFY)
                     val path = basePath.resolve(rawPath)
-                    updatePath(path)?.also {
+                    if (updatePath(path)) also {
                         if (!path.toFile().isDirectory) {
                             // Watch only non directory entries.
-                            currentEventBunch.add(it to EventType.CHANGED)
+                            currentEventBunch.add(path to EventType.CHANGED)
                         }
                     }
                 }
@@ -254,17 +268,17 @@ class FileSystemTracker(
     /**
      * Update timestamp for path.
      *
-     * @return `(path, now)` if update was meaningful
-     * (previous entry was not present or has older timestamp)
+     * @return `true` if update was meaningful
+     * (previous entry was not present or had older timestamp)
      */
-    private fun updatePath(path: Path): Path? {
+    private fun updatePath(path: Path): Boolean {
         val oldTimeStamp = discovered[path]?.first
         val now = Instant.now()
         return if (oldTimeStamp == null || now.isAfter(oldTimeStamp)) {
             discovered[path] = Pair(now, path.toFile().isDirectory)
-            path
+            true
         } else {
-            null
+            false
         }
     }
 
@@ -272,14 +286,18 @@ class FileSystemTracker(
      * Do stop.
      */
     override fun stop(force: Boolean) = brake.push {
-        this.forced = force
-        this@FileSystemTracker.watchService.close()
+        this.forced.set(force)
     }
 
     /**
      * Create brake synchronously.
      */
-    private fun doStopBrake() = brake.push().complete(Unit)
+    private fun doStopBrake() = brake.push().apply {
+        watchService.close()
+        registeredWatches.clear()
+        discovered.clear()
+        complete(Unit)
+    }
 
     /**
      * Check, whether this [Tracker] is stopping.

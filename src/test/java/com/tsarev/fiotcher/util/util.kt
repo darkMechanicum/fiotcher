@@ -1,6 +1,8 @@
 package com.tsarev.fiotcher.util
 
 import org.junit.jupiter.api.Assertions
+import java.io.File
+import java.nio.file.Paths
 import java.util.*
 import java.util.concurrent.Executor
 import java.util.concurrent.SynchronousQueue
@@ -90,4 +92,27 @@ fun AsyncTestEvents.assertNoEvent(timeoutMs: Long = defaultTestAsyncAssertTimeou
     val polled = poll(timeoutMs, TimeUnit.MILLISECONDS)
     if (polled != null)
         Assertions.fail<Unit>("Event [$polled] received")
+}
+
+// --- Utilities for creating files and directories ---
+/**
+ * Create empty file in [this] directory.
+ */
+fun File.createFile(name: String): File {
+    if (!exists()) throw IllegalArgumentException("No such directory ${this.absolutePath}")
+    if (!isDirectory) throw IllegalArgumentException("File ${this.absolutePath} is not a directory")
+    return Paths.get(this.absolutePath, name).toFile().apply {
+        if (!exists()) createNewFile()
+    }
+}
+
+/**
+ * Create empty file in [this] directory.
+ */
+fun File.createDirectory(name: String): File {
+    if (!exists()) throw IllegalArgumentException("No such directory ${this.absolutePath}")
+    if (!isDirectory) throw IllegalArgumentException("File ${this.absolutePath} is not a directory")
+    return Paths.get(this.absolutePath, name).toFile().apply {
+        if (!exists()) mkdirs()
+    }
 }

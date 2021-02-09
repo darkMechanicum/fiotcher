@@ -38,7 +38,7 @@ abstract class Tracker<WatchT : Any> : Runnable, Stoppable {
      */
     fun init(
         resourceBundle: WatchT,
-        executor: Executor = ForkJoinPool.commonPool()
+        executor: Executor
     ): Flow.Publisher<TrackerEventBunch<WatchT>> {
         this.resourceBundle = resourceBundle
         return doInit(executor)
