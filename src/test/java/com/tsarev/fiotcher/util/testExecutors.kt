@@ -79,6 +79,7 @@ object TestExecutorRegistry {
 
         @Volatile
         var suspended = true
+        private val loggingEnabled = System.getProperty("com.tsarev.fiotcher.tests.log", "false").toBoolean()
         private val counter = AtomicLong(0)
         private val testThreadTasks = LinkedBlockingDeque<Runnable>()
         private val singleTestThread = Thread {
@@ -104,10 +105,19 @@ object TestExecutorRegistry {
 
         override fun execute(command: Runnable) {
             val value = counter.incrementAndGet()
-            System.err.println("[REQUEST $name $value]: $command")
-            testThreadTasks.add { System.err.println("[EXECUTE $name $value]: before"); beforeStart() }
-            testThreadTasks.add { System.err.println("[EXECUTE $name $value]: $command"); command.run() }
-            testThreadTasks.add { System.err.println("[EXECUTE $name $value]: after"); afterCompletion() }
+            log { "[REQUEST $name $value]: $command" }
+            testThreadTasks.add { log { "[EXECUTE $name $value]: before" }; beforeStart() }
+            testThreadTasks.add { log { "[EXECUTE $name $value]: $command" }; command.run() }
+            testThreadTasks.add { log { "[EXECUTE $name $value]: after" }; afterCompletion() }
+        }
+
+        /**
+         * Primitive no buffer logging.
+         */
+        private fun log(toLog: () -> String) {
+            if (loggingEnabled) {
+                System.err.println(toLog())
+            }
         }
 
         override fun close() {

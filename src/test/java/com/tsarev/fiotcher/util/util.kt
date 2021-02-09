@@ -79,7 +79,6 @@ fun AsyncTestEvents.assertEvent(event: Any, timeoutMs: Long = defaultTestAsyncAs
     val polled = poll(timeoutMs, TimeUnit.MILLISECONDS)
     if (polled == null) Assertions.fail<Unit>("No event [$event] received")
     else Assertions.assertEquals(event, polled) { "Received not expected event" }
-    System.err.println("asserted event [$event]")
 }
 
 /**
