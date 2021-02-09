@@ -33,7 +33,7 @@ interface TrackerPool<WatchT : Any> : Stoppable {
         resourceBundle: WatchT,
         tracker: Tracker<WatchT>,
         key: String
-    ): CompletionStage<Stoppable>
+    ): CompletionStage<Tracker<WatchT>>
 
     /**
      * Stop tracker asynchronously based on [resourceBundle].

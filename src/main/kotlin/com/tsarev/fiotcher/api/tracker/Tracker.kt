@@ -40,6 +40,7 @@ abstract class Tracker<WatchT : Any> : Runnable, Stoppable {
         resourceBundle: WatchT,
         executor: Executor
     ): Flow.Publisher<TrackerEventBunch<WatchT>> {
+        // TODO Add idempotency support.
         this.resourceBundle = resourceBundle
         return doInit(executor)
     }

@@ -29,7 +29,7 @@ interface FileProcessorManager {
      * @return a future handle, that will return [Stoppable] - a handle to registered tracker, when registration completes.
      * Invoking that [Stoppable] is equivalent of [stopTracking] with same parameters as passed to [startTracking]
      */
-    fun startTracking(path: File, key: String, recursively: Boolean = true): CompletionStage<Stoppable>
+    fun startTracking(path: File, key: String, recursively: Boolean = true): CompletionStage<out Stoppable>
 
     /**
      * Stop tracking specified [path] with specified type ([key]).

@@ -5,10 +5,10 @@ import com.tsarev.fiotcher.api.flow.ChainingListener
 import java.util.concurrent.CompletionStage
 
 /**
- * Interface to separate [TrackerEvent] listening process
- * from actually generating those events.
+ * Listener registry used to synchronize [ChainingListener]
+ * registration and de registration.
  */
-interface AggregatorListenerRegistry<WatchT : Any> {
+interface ListenerRegistry<WatchT : Any> {
 
     /**
      * Register listener.
@@ -16,7 +16,7 @@ interface AggregatorListenerRegistry<WatchT : Any> {
     fun registerListener(
         listener: ChainingListener<TrackerEventBunch<WatchT>>,
         key: String
-    ): Stoppable
+    ): ChainingListener<TrackerEventBunch<WatchT>>
 
     /**
      * De register listener.

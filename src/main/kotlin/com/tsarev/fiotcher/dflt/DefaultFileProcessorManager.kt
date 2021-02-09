@@ -26,7 +26,7 @@ class DefaultFileProcessorManager(
 
     val domParser = DocumentBuilderFactory.newInstance().newDocumentBuilder()
 
-    override fun startTracking(path: File, key: String, recursively: Boolean): CompletionStage<Stoppable> {
+    override fun startTracking(path: File, key: String, recursively: Boolean): CompletionStage<out Stoppable> {
         val fileSystemTracker = FileSystemTracker(recursive = recursively)
         return processor.trackerPool
             .startTracker(path, fileSystemTracker, key)

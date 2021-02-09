@@ -54,16 +54,19 @@ class DefaultProcessor<WatchT : Any>(
         stoppingExecutorService
     )
 
-    private val _defaultTrackerPool = DefaultTrackerPool<WatchT>(
+    override val aggregatorPool = DefaultAggregatorPool<WatchT>(
+        aggregatorMaxCapacity,
+        queueExecutorService
+    )
+
+    override val trackerPool = DefaultTrackerPool(
         trackerExecutor,
         queueExecutorService,
         registrationExecutorService,
         stoppingExecutorService,
-        aggregatorMaxCapacity
+        aggregatorPool
     )
 
-    override val trackerPool get() = _defaultTrackerPool
-
-    override val trackerListenerRegistry get() = _defaultTrackerPool
+    override val trackerListenerRegistry = DefaultListenerRegistry<WatchT>()
 
 }
