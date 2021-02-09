@@ -1,7 +1,6 @@
 package com.tsarev.fiotcher.internals.flow
 
 import com.tsarev.fiotcher.dflt.flows.Aggregator
-import com.tsarev.fiotcher.dflt.flows.DelegatingTransformer
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
@@ -9,7 +8,7 @@ import java.util.concurrent.Flow
 import java.util.concurrent.SubmissionPublisher
 
 /**
- * Testing [DelegatingTransformer].
+ * Testing [Aggregator].
  */
 class SynchronousAggregatorTest {
 
