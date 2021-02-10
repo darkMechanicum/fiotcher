@@ -9,6 +9,7 @@ data class EventWithException<EventT : Any>(
     init {
         if (event === null && exception === null) throw FiotcherException("Can't send empty event")
     }
+
     fun ifSuccess(block: (EventT) -> Unit) = if (event != null) block(event) else Unit
     fun ifFailed(block: (Throwable) -> Unit) = if (exception != null) block(exception) else Unit
 }
@@ -27,4 +28,4 @@ data class KClassTypedKey<TypeT : Any>(
 /**
  * Create key/type pair from string and kclass.
  */
-inline fun <reified T : Any> String.typedKey() = KClassTypedKey(this, T::class )
+inline fun <reified T : Any> String.typedKey() = KClassTypedKey(this, T::class)

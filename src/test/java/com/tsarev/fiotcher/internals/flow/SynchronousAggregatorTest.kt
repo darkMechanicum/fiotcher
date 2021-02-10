@@ -26,13 +26,17 @@ class SynchronousAggregatorTest {
             { testSync.sendEvent("aggregator subscribed") }
         )
         val firstSubscriber = object : Flow.Subscriber<EventWithException<String>> {
-            override fun onSubscribe(subscription: Flow.Subscription?) = run { subscription?.request(1); testSync.sendEvent("first subscribed") }
+            override fun onSubscribe(subscription: Flow.Subscription?) =
+                run { subscription?.request(1); testSync.sendEvent("first subscribed") }
+
             override fun onNext(item: EventWithException<String>) = run { testSync.sendEvent("first ${item.event}") }
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }
         }
         val secondSubscriber = object : Flow.Subscriber<EventWithException<String>> {
-            override fun onSubscribe(subscription: Flow.Subscription?) = run { subscription?.request(1); testSync.sendEvent("second subscribed") }
+            override fun onSubscribe(subscription: Flow.Subscription?) =
+                run { subscription?.request(1); testSync.sendEvent("second subscribed") }
+
             override fun onNext(item: EventWithException<String>) = run { testSync.sendEvent("second ${item.event}") }
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }
@@ -63,7 +67,9 @@ class SynchronousAggregatorTest {
             { testSync.sendEvent("aggregator subscribed") }
         )
         val firstSubscriber = object : Flow.Subscriber<EventWithException<String>> {
-            override fun onSubscribe(subscription: Flow.Subscription?) = run { subscription?.request(1); testSync.sendEvent("first subscribed") }
+            override fun onSubscribe(subscription: Flow.Subscription?) =
+                run { subscription?.request(1); testSync.sendEvent("first subscribed") }
+
             override fun onNext(item: EventWithException<String>) = run { testSync.sendEvent("first ${item.event}") }
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }
@@ -93,7 +99,9 @@ class SynchronousAggregatorTest {
             { testSync.sendEvent("aggregator subscribed") }
         )
         val firstSubscriber = object : Flow.Subscriber<EventWithException<String>> {
-            override fun onSubscribe(subscription: Flow.Subscription?) = run { subscription?.request(1); testSync.sendEvent("first subscribed") }
+            override fun onSubscribe(subscription: Flow.Subscription?) =
+                run { subscription?.request(1); testSync.sendEvent("first subscribed") }
+
             override fun onNext(item: EventWithException<String>) = run { testSync.sendEvent("first ${item.event}") }
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }
@@ -135,7 +143,9 @@ class SynchronousAggregatorTest {
             { testSync.sendEvent("aggregator subscribed") }
         )
         val firstSubscriber = object : Flow.Subscriber<EventWithException<String>> {
-            override fun onSubscribe(subscription: Flow.Subscription?) = run { subscription?.request(1); testSync.sendEvent("first subscribed") }
+            override fun onSubscribe(subscription: Flow.Subscription?) =
+                run { subscription?.request(1); testSync.sendEvent("first subscribed") }
+
             override fun onNext(item: EventWithException<String>) = run { testSync.sendEvent("first ${item.event}") }
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }

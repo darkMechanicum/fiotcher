@@ -288,7 +288,7 @@ class FileSystemTracker(
      */
     override fun stop(force: Boolean) = this
         .forced.set(force)
-        .let { brake.push () }
+        .let { brake.push() }
 
     /**
      * Create brake synchronously.

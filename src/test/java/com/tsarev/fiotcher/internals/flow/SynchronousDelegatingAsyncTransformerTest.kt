@@ -24,7 +24,7 @@ class SynchronousDelegatingAsyncTransformerTest {
             { testSync.sendEvent("chained $it") },
             { testSync.sendEvent("chained subscribed") }
         )
-        val publisher = SubmissionPublisher< EventWithException<String>>(callerThreadTestExecutor, 10)
+        val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 10)
 
         // Test.
         val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
@@ -110,7 +110,7 @@ class SynchronousDelegatingAsyncTransformerTest {
     fun `synchronous force stop before subscribe`() {
         // Prepare.
         val chained = CommonListener<String>(
-            onNextHandler = {  },
+            onNextHandler = { },
             onErrorHandler = { testSync.sendEvent(it) }
         )
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 10)

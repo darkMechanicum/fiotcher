@@ -20,7 +20,7 @@ class CommonListenerTest {
     fun `send two events`() {
         // Prepare.
         val listener = CommonListener<String>({ testSync.sendEvent(it) }, { testSync.sendEvent("subscribed") })
-        val publisher = SubmissionPublisher< EventWithException<String>>(callerThreadTestExecutor, 100)
+        val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
 
         // Test.
         publisher.subscribe(listener)

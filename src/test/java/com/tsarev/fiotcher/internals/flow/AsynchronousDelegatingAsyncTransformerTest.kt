@@ -37,7 +37,7 @@ class AsynchronousDelegatingAsyncTransformerTest {
             { testAsync.sendEvent("executor start") },
             { testAsync.sendEvent("executor finished") }
         )
-        val publisher = SubmissionPublisher< EventWithException<String>>(executor, 10)
+        val publisher = SubmissionPublisher<EventWithException<String>>(executor, 10)
 
         // Test.
         val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(

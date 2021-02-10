@@ -1,8 +1,8 @@
 package com.tsarev.fiotcher.api.pool
 
+import com.tsarev.fiotcher.api.PoolIsStopping
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.api.TrackerAlreadyRegistered
-import com.tsarev.fiotcher.api.PoolIsStopping
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.Executor
 

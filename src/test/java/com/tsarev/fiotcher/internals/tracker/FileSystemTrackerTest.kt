@@ -37,7 +37,8 @@ class FileSystemTrackerTest {
 
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }
-            override fun onSubscribe(subscription: Flow.Subscription?) = run { subscription?.request(Long.MAX_VALUE); Unit }
+            override fun onSubscribe(subscription: Flow.Subscription?) =
+                run { subscription?.request(Long.MAX_VALUE); Unit }
         }
         trackerPublisher.subscribe(subscriber)
 
