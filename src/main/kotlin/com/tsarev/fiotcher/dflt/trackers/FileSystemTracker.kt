@@ -2,7 +2,7 @@ package com.tsarev.fiotcher.dflt.trackers
 
 import com.tsarev.fiotcher.api.EventType
 import com.tsarev.fiotcher.api.TypedEvents
-import com.tsarev.fiotcher.api.tracker.Tracker
+import com.tsarev.fiotcher.api.pool.Tracker
 import com.tsarev.fiotcher.api.withType
 import com.tsarev.fiotcher.dflt.Brake
 import com.tsarev.fiotcher.dflt.push

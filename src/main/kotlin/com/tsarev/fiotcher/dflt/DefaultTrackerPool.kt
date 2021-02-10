@@ -1,8 +1,7 @@
 package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.*
-import com.tsarev.fiotcher.api.tracker.*
-import java.io.File
+import com.tsarev.fiotcher.api.pool.*
 import java.util.concurrent.*
 
 /**

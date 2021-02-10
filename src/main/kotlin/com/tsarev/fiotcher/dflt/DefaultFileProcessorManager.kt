@@ -1,11 +1,12 @@
 package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.*
-import com.tsarev.fiotcher.dflt.streams.NaiveFileStreamPool
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
 import org.w3c.dom.Document
 import org.xml.sax.helpers.DefaultHandler
 import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
 import java.io.InputStream
 import java.util.*
 import java.util.concurrent.CompletionStage
@@ -15,8 +16,6 @@ import javax.xml.parsers.SAXParserFactory
 class DefaultFileProcessorManager(
     override val processor: Processor<File>
 ) : FileProcessorManager {
-
-    private val naiveFileStreamPool = NaiveFileStreamPool()
 
     val saxParser = SAXParserFactory.newInstance().newSAXParser()
 
@@ -43,7 +42,7 @@ class DefaultFileProcessorManager(
                         }
                     }
                 }
-                .syncChainFrom<File, InputStream> { naiveFileStreamPool.getInputStream(it) }
+                .syncChainFrom<File, InputStream> { getStreamOrNull(it) }
                 .asyncDelegateFrom<TypedEvents<File>, File> { bunch, publisher ->
                     val changedFiles = bunch.filter { it.type == EventType.CHANGED }
                     changedFiles.forEach { publisher(it.event) }
@@ -68,7 +67,7 @@ class DefaultFileProcessorManager(
     override fun handleSax(key: String, saxListener: DefaultHandler): Stoppable {
         val listener = with(processor.wayStation) {
             createCommonListener<InputStream> { saxParser.parse(it, saxListener) }
-                .syncChainFrom<File, InputStream> { naiveFileStreamPool.getInputStream(it) }
+                .syncChainFrom<File, InputStream> { getStreamOrNull(it) }
                 .asyncDelegateFrom<TypedEvents<File>, File> { bunch, publisher ->
                     val changedFiles = bunch.filter { it.type == EventType.CHANGED }
                     changedFiles.forEach { publisher(it.event) }
@@ -81,7 +80,7 @@ class DefaultFileProcessorManager(
     override fun handleDom(key: String, domListener: (Document) -> Unit): Stoppable {
         val listener = with(processor.wayStation) {
             createCommonListener<InputStream> { val document = domParser.parse(it); domListener(document) }
-                .syncChainFrom<File, InputStream> { naiveFileStreamPool.getInputStream(it) }
+                .syncChainFrom<File, InputStream> { getStreamOrNull(it) }
                 .asyncDelegateFrom<TypedEvents<File>, File> { bunch, publisher ->
                     val changedFiles = bunch.filter { it.type == EventType.CHANGED }
                     changedFiles.forEach { publisher(it.event) }
@@ -89,6 +88,12 @@ class DefaultFileProcessorManager(
         }
         processor.trackerListenerRegistry.registerListener(listener, key.typedKey())
         return listener
+    }
+
+    private fun getStreamOrNull(file: File) = try {
+        FileInputStream(file)
+    } catch (cause: IOException) {
+        null
     }
 
 }

@@ -4,7 +4,7 @@ import com.tsarev.fiotcher.api.FiotcherException
 import com.tsarev.fiotcher.api.PoolIsStopping
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.api.KClassTypedKey
-import com.tsarev.fiotcher.api.tracker.AggregatorPool
+import com.tsarev.fiotcher.api.pool.AggregatorPool
 import com.tsarev.fiotcher.dflt.flows.Aggregator
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
