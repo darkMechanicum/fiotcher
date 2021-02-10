@@ -1,16 +1,16 @@
 package com.tsarev.fiotcher.api.tracker
 
-import com.tsarev.fiotcher.api.TypedEvent
+import com.tsarev.fiotcher.api.KClassTypedKey
 import com.tsarev.fiotcher.dflt.flows.Aggregator
 
 /**
  * Pool, used to synchronize aggregator access.
  */
-interface AggregatorPool<WatchT : Any> {
+interface AggregatorPool {
 
     /**
      * Get or create new aggregator.
      */
-    fun getAggregator(key: String): Aggregator<Collection<TypedEvent<WatchT>>>
+    fun <EventT : Any> getAggregator(key: KClassTypedKey<EventT>): Aggregator<EventT>
 
 }

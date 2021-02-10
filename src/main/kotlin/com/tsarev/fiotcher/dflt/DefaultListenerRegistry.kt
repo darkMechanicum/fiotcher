@@ -1,9 +1,6 @@
 package com.tsarev.fiotcher.dflt
 
-import com.tsarev.fiotcher.api.ListenerAlreadyRegistered
-import com.tsarev.fiotcher.api.ListenerRegistryIsStopping
-import com.tsarev.fiotcher.api.Stoppable
-import com.tsarev.fiotcher.api.TypedEvents
+import com.tsarev.fiotcher.api.*
 import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.api.tracker.ListenerRegistry
 import java.util.concurrent.CompletableFuture
@@ -13,18 +10,19 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Default [ListenerRegistry] implementation.
  */
-class DefaultListenerRegistry<WatchT : Any> : ListenerRegistry<WatchT>, Stoppable {
+class DefaultListenerRegistry : ListenerRegistry, Stoppable {
 
     private val brake = Brake<Unit>()
 
     /**
      * Registered listeners, by key.
      */
-    private val registeredListeners = ConcurrentHashMap<String, ChainingListener<TypedEvents<WatchT>>>()
+    private val registeredListeners = ConcurrentHashMap<KClassTypedKey<*>, ChainingListener<*>>()
 
-    override fun registerListener(
-        listener: ChainingListener<TypedEvents<WatchT>>, key: String
-    ): ChainingListener<TypedEvents<WatchT>> {
+    override fun <EventT : Any> registerListener(
+        listener: ChainingListener<EventT>,
+        key: KClassTypedKey<EventT>
+    ): ChainingListener<EventT> {
         // Sync on the pool to handle stopping properly.
         synchronized(this) {
             checkIsStopping { ListenerRegistryIsStopping() }
@@ -33,7 +31,8 @@ class DefaultListenerRegistry<WatchT : Any> : ListenerRegistry<WatchT>, Stoppabl
         return createListenerWrapper(key, listener)
     }
 
-    override fun deRegisterListener(key: String, force: Boolean): CompletionStage<*> {
+
+    override fun deRegisterListener(key: KClassTypedKey<*>, force: Boolean): CompletionStage<*> {
         checkIsStopping { ListenerRegistryIsStopping() }
         // Check if we need to de register anything.
         val deRegistered = registeredListeners[key]
@@ -58,10 +57,10 @@ class DefaultListenerRegistry<WatchT : Any> : ListenerRegistry<WatchT>, Stoppabl
     /**
      * Perform actual listener de registration.
      */
-    private fun doDeRegisterListener(
-        key: String,
+    private fun <EventT : Any> doDeRegisterListener(
+        key: KClassTypedKey<EventT>,
         force: Boolean,
-        listener: ChainingListener<TypedEvents<WatchT>>
+        listener: ChainingListener<*>
     ): CompletionStage<*> {
         val deRegistered = registeredListeners[key]
         return if (deRegistered != null && listener === deRegistered) {
@@ -79,11 +78,11 @@ class DefaultListenerRegistry<WatchT : Any> : ListenerRegistry<WatchT>, Stoppabl
     /**
      * Create a handle, that stops the tracker and de registers it.
      */
-    private fun createListenerWrapper(
-        key: String,
-        listener: ChainingListener<TypedEvents<WatchT>>
-    ): ChainingListener<TypedEvents<WatchT>> {
-        return object : ChainingListener<TypedEvents<WatchT>> by listener {
+    private fun <EventT : Any> createListenerWrapper(
+        key: KClassTypedKey<EventT>,
+        listener: ChainingListener<EventT>
+    ): ChainingListener<EventT> {
+        return object : ChainingListener<EventT> by listener {
             override val isStopped: Boolean
                 get() = this@DefaultListenerRegistry.isStopped || listener.isStopped
 

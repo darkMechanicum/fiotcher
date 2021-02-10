@@ -2,11 +2,12 @@ package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.*
 import com.tsarev.fiotcher.api.tracker.*
+import java.io.File
 import java.util.concurrent.*
 
 /**
  * Default tracker pool implementation, which also serves as
- * [TrackerEventBunch] notifier.
+ * [WatchT] notifier.
  */
 class DefaultTrackerPool<WatchT : Any>(
     /**
@@ -32,7 +33,7 @@ class DefaultTrackerPool<WatchT : Any>(
     /**
      * [AggregatorPool] for aggregator synchronous access.
      */
-    private val aggregatorPool: AggregatorPool<WatchT>
+    private val aggregatorPool: AggregatorPool
 ) : TrackerPool<WatchT> {
 
     /**
@@ -92,9 +93,11 @@ class DefaultTrackerPool<WatchT : Any>(
 
             var wrappedTracker: Tracker<WatchT>? = null
             try {
+                // We don't need additional type info, since there can only be one tracker by string key.
+                val asTyped = key.typedKey<TypedEvents<*>>()
                 // Try to init tracker and subscribe to its publisher.
                 // Can throw exception due to pool stopping, but we will handle it later.
-                val targetAggregator = aggregatorPool.getAggregator(key)
+                val targetAggregator = aggregatorPool.getAggregator(asTyped)
                 val trackerPublisher = tracker.init(resourceBundle, queueExecutorService)
                 trackerPublisher.subscribe(targetAggregator)
 

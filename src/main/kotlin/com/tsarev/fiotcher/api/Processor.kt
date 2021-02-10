@@ -19,7 +19,7 @@ interface Processor<WatchT : Any> {
     /**
      * Tracker listeners, used by this processor.
      */
-    val trackerListenerRegistry: ListenerRegistry<WatchT>
+    val trackerListenerRegistry: ListenerRegistry
 
     /**
      * Grouping of intermediate processing.
@@ -29,5 +29,5 @@ interface Processor<WatchT : Any> {
     /**
      * Pool used to manage aggregators.
      */
-    val aggregatorPool: DefaultAggregatorPool<WatchT>
+    val aggregatorPool: DefaultAggregatorPool
 }

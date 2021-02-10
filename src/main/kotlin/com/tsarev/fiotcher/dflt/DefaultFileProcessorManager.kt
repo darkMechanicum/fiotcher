@@ -49,7 +49,7 @@ class DefaultFileProcessorManager(
                     changedFiles.forEach { publisher(it.event) }
                 }
         }
-        processor.trackerListenerRegistry.registerListener(listener, key)
+        processor.trackerListenerRegistry.registerListener(listener, key.typedKey())
         return listener
     }
 
@@ -61,7 +61,7 @@ class DefaultFileProcessorManager(
                     changedFiles.forEach { publisher(it.event) }
                 }
         }
-        processor.trackerListenerRegistry.registerListener(listener, key)
+        processor.trackerListenerRegistry.registerListener(listener, key.typedKey())
         return listener
     }
 
@@ -74,7 +74,7 @@ class DefaultFileProcessorManager(
                     changedFiles.forEach { publisher(it.event) }
                 }
         }
-        processor.trackerListenerRegistry.registerListener(listener, key)
+        processor.trackerListenerRegistry.registerListener(listener, key.typedKey())
         return listener
     }
 
@@ -87,7 +87,7 @@ class DefaultFileProcessorManager(
                     changedFiles.forEach { publisher(it.event) }
                 }
         }
-        processor.trackerListenerRegistry.registerListener(listener, key)
+        processor.trackerListenerRegistry.registerListener(listener, key.typedKey())
         return listener
     }
 

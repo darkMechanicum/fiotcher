@@ -1,6 +1,8 @@
 package com.tsarev.fiotcher.api.tracker
 
 import com.tsarev.fiotcher.api.Stoppable
+import com.tsarev.fiotcher.api.TrackerAlreadyRegistered
+import com.tsarev.fiotcher.api.PoolIsStopping
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.Executor
 
@@ -38,7 +40,7 @@ interface TrackerPool<WatchT : Any> : Stoppable {
     /**
      * Stop tracker asynchronously based on [resourceBundle].
      *
-     * May send additional out-of-order [TrackerEventBunch] to
+     * May send additional out-of-order events to
      * reflect resources state at tracker shutdown.
      *
      * @param resourceBundle bundle, for which tracker was registered

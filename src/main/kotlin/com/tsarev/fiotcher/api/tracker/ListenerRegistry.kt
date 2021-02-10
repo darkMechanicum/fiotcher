@@ -1,6 +1,6 @@
 package com.tsarev.fiotcher.api.tracker
 
-import com.tsarev.fiotcher.api.TypedEvents
+import com.tsarev.fiotcher.api.KClassTypedKey
 import com.tsarev.fiotcher.api.flow.ChainingListener
 import java.util.concurrent.CompletionStage
 
@@ -8,21 +8,21 @@ import java.util.concurrent.CompletionStage
  * Listener registry used to synchronize [ChainingListener]
  * registration and de registration.
  */
-interface ListenerRegistry<WatchT : Any> {
+interface ListenerRegistry {
 
     /**
      * Register listener.
      */
-    fun registerListener(
-        listener: ChainingListener<TypedEvents<WatchT>>,
-        key: String
-    ): ChainingListener<TypedEvents<WatchT>>
+    fun <EventT : Any> registerListener(
+        listener: ChainingListener<EventT>,
+        key: KClassTypedKey<EventT>
+    ): ChainingListener<EventT>
 
     /**
      * De register listener.
      */
     fun deRegisterListener(
-        key: String,
+        key: KClassTypedKey<*>,
         force: Boolean = false
     ): CompletionStage<*>
 
