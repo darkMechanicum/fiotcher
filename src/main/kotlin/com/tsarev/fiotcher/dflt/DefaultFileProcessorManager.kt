@@ -44,7 +44,7 @@ class DefaultFileProcessorManager(
                     }
                 }
                 .syncChainFrom<File, InputStream> { getStreamOrNull(it) }
-                .asyncDelegateFrom<Collection<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
+                .asyncDelegateFrom<InitialEventsBunch<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
         }
         processor.registerListener(listener, key.typedKey())
         return listener
@@ -53,7 +53,7 @@ class DefaultFileProcessorManager(
     override fun handleFiles(key: String, fileListener: (File) -> Unit): Stoppable {
         val listener = with(processor) {
             createCommonListener(listener = fileListener)
-                .asyncDelegateFrom<Collection<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
+                .asyncDelegateFrom<InitialEventsBunch<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
         }
         processor.registerListener(listener, key.typedKey())
         return listener
@@ -63,7 +63,7 @@ class DefaultFileProcessorManager(
         val listener = with(processor) {
             createCommonListener<InputStream> { saxParser.parse(it, saxListener) }
                 .syncChainFrom<File, InputStream> { getStreamOrNull(it) }
-                .asyncDelegateFrom<Collection<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
+                .asyncDelegateFrom<InitialEventsBunch<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
         }
         processor.registerListener(listener, key.typedKey())
         return listener
@@ -73,7 +73,7 @@ class DefaultFileProcessorManager(
         val listener = with(processor) {
             createCommonListener<InputStream> { val document = domParser.parse(it); domListener(document) }
                 .syncChainFrom<File, InputStream> { getStreamOrNull(it) }
-                .asyncDelegateFrom<Collection<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
+                .asyncDelegateFrom<InitialEventsBunch<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
         }
         processor.registerListener(listener, key.typedKey())
         return listener
