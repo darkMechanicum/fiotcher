@@ -1,5 +1,7 @@
 package com.tsarev.fiotcher.api.flow
 
+import com.tsarev.fiotcher.api.KClassTypedKey
+
 /**
  * This is an intermediate point, where we may split, group and make asynchronous (or may not)
  * processing of resources.
@@ -12,6 +14,13 @@ interface WayStation {
      * @param listener actual listening logic
      */
     fun <ResourceT : Any> createCommonListener(listener: (ResourceT) -> Unit): ChainingListener<ResourceT>
+
+    /**
+     * Aggregate events of new event type.
+     *
+     * @param key new event type
+     */
+    fun <ResourceT : Any> doAggregate(key: KClassTypedKey<ResourceT>): ChainingListener<ResourceT>
 
     /**
      * Chain from listener, that will transform its events to this listener ones synchronously.

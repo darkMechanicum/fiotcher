@@ -129,7 +129,7 @@ class FileSystemTracker(
                         // Send event, if not empty.
                         if (allEntries.isNotEmpty()) {
                             val events = allEntries.map { it.resource withType it.type }
-                            publisher.submit(events)
+                            publisher.submit(TypedEvents(events))
                         }
                     }
                 } catch (interrupted: InterruptedException) {

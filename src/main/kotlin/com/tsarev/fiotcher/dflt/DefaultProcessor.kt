@@ -48,15 +48,16 @@ class DefaultProcessor<WatchT : Any>(
 
     ) : Processor<WatchT> {
 
-    override val wayStation = DefaultWayStation(
-        maxTransformerCapacity,
-        transformerExecutorService,
-        stoppingExecutorService
-    )
-
     override val aggregatorPool = DefaultAggregatorPool(
         aggregatorMaxCapacity,
         queueExecutorService
+    )
+
+    override val wayStation = DefaultWayStation(
+        maxTransformerCapacity,
+        transformerExecutorService,
+        stoppingExecutorService,
+        aggregatorPool
     )
 
     override val trackerPool = DefaultTrackerPool<WatchT>(
@@ -67,6 +68,8 @@ class DefaultProcessor<WatchT : Any>(
         aggregatorPool
     )
 
-    override val trackerListenerPool = DefaultListenerPool()
+    override val trackerListenerPool = DefaultListenerPool(
+        aggregatorPool
+    )
 
 }

@@ -2,33 +2,43 @@ package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.*
 import com.tsarev.fiotcher.api.flow.ChainingListener
+import com.tsarev.fiotcher.api.pool.AggregatorPool
 import com.tsarev.fiotcher.api.pool.ListenerPool
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CompletionStage
-import java.util.concurrent.ConcurrentHashMap
+import com.tsarev.fiotcher.dflt.flows.SingleSubscriptionSubscriber
+import java.util.concurrent.*
 
 /**
  * Default [ListenerPool] implementation.
  */
-class DefaultListenerPool : ListenerPool, Stoppable {
+class DefaultListenerPool(
+    /**
+     * Aggregators, to listen to.
+     */
+    private val aggregatorPool: AggregatorPool
+) : ListenerPool, Stoppable {
 
     private val brake = Brake<Unit>()
 
     /**
      * Registered listeners, by key.
      */
-    private val registeredListeners = ConcurrentHashMap<KClassTypedKey<*>, ChainingListener<*>>()
+    private val registeredListeners = ConcurrentHashMap<KClassTypedKey<*>, SingleSubscriptionSubscriber<*>>()
 
     override fun <EventT : Any> registerListener(
         listener: ChainingListener<EventT>,
         key: KClassTypedKey<EventT>
     ): ChainingListener<EventT> {
+        if (listener !is SingleSubscriptionSubscriber<*>)
+            throw FiotcherException("Can't use listeners, other that are created by [DefaultWayStation]")
         // Sync on the pool to handle stopping properly.
         synchronized(this) {
             checkIsStopping { ListenerRegistryIsStopping() }
             if (registeredListeners.putIfAbsent(key, listener) != null) throw ListenerAlreadyRegistered(key)
+            // If listener is [SingleSubscriptionSubscriber<*>] and [ChainingListener<EventT>]
+            // so definitely it is also a [SingleSubscriptionSubscriber<EventT>]
+            aggregatorPool.getAggregator(key).subscribe(listener as SingleSubscriptionSubscriber<EventT>)
         }
-        return createListenerWrapper(key, listener)
+        return createListenerWrapper(key, listener as ChainingListener<EventT>)
     }
 
 
