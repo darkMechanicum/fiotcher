@@ -1,5 +1,7 @@
 package com.tsarev.fiotcher.internals.flow
 
+import com.tsarev.fiotcher.api.EventWithException
+import com.tsarev.fiotcher.api.asSuccess
 import com.tsarev.fiotcher.dflt.flows.Aggregator
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.Assertions
@@ -17,21 +19,21 @@ class SynchronousAggregatorTest {
     @Test
     fun `synchronous send two events`() {
         // --- Prepare ---
-        val publisher = SubmissionPublisher<String>(callerThreadTestExecutor, 10)
+        val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 10)
         val aggregator = Aggregator<String>(
             callerThreadTestExecutor,
             10,
             { testSync.sendEvent("aggregator subscribed") }
         )
-        val firstSubscriber = object : Flow.Subscriber<String> {
+        val firstSubscriber = object : Flow.Subscriber<EventWithException<String>> {
             override fun onSubscribe(subscription: Flow.Subscription?) = run { subscription?.request(1); testSync.sendEvent("first subscribed") }
-            override fun onNext(item: String?) = run { testSync.sendEvent("first $item") }
+            override fun onNext(item: EventWithException<String>) = run { testSync.sendEvent("first ${item.event}") }
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }
         }
-        val secondSubscriber = object : Flow.Subscriber<String> {
+        val secondSubscriber = object : Flow.Subscriber<EventWithException<String>> {
             override fun onSubscribe(subscription: Flow.Subscription?) = run { subscription?.request(1); testSync.sendEvent("second subscribed") }
-            override fun onNext(item: String?) = run { testSync.sendEvent("second $item") }
+            override fun onNext(item: EventWithException<String>) = run { testSync.sendEvent("second ${item.event}") }
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }
         }
@@ -46,7 +48,7 @@ class SynchronousAggregatorTest {
         testSync.assertEvent("second subscribed")
 
         // Test event processing.
-        publisher.submit("item")
+        publisher.submit("item".asSuccess())
         testSync.assertEvent("first item")
         testSync.assertEvent("second item")
     }
@@ -54,15 +56,15 @@ class SynchronousAggregatorTest {
     @Test
     fun `synchronous stop after event`() {
         // --- Prepare ---
-        val publisher = SubmissionPublisher<String>(callerThreadTestExecutor, 10)
+        val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 10)
         val aggregator = Aggregator<String>(
             callerThreadTestExecutor,
             10,
             { testSync.sendEvent("aggregator subscribed") }
         )
-        val firstSubscriber = object : Flow.Subscriber<String> {
+        val firstSubscriber = object : Flow.Subscriber<EventWithException<String>> {
             override fun onSubscribe(subscription: Flow.Subscription?) = run { subscription?.request(1); testSync.sendEvent("first subscribed") }
-            override fun onNext(item: String?) = run { testSync.sendEvent("first $item") }
+            override fun onNext(item: EventWithException<String>) = run { testSync.sendEvent("first ${item.event}") }
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }
         }
@@ -76,7 +78,7 @@ class SynchronousAggregatorTest {
 
         // Test event processing after stop.
         aggregator.stop()
-        publisher.submit("item")
+        publisher.submit("item".asSuccess())
         testSync.assertNoEvent()
         Assertions.assertEquals(0, publisher.numberOfSubscribers)
     }
@@ -84,15 +86,15 @@ class SynchronousAggregatorTest {
     @Test
     fun `synchronous stop before subscribe`() {
         // --- Prepare ---
-        val publisher = SubmissionPublisher<String>(callerThreadTestExecutor, 10)
+        val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 10)
         val aggregator = Aggregator<String>(
             callerThreadTestExecutor,
             10,
             { testSync.sendEvent("aggregator subscribed") }
         )
-        val firstSubscriber = object : Flow.Subscriber<String> {
+        val firstSubscriber = object : Flow.Subscriber<EventWithException<String>> {
             override fun onSubscribe(subscription: Flow.Subscription?) = run { subscription?.request(1); testSync.sendEvent("first subscribed") }
-            override fun onNext(item: String?) = run { testSync.sendEvent("first $item") }
+            override fun onNext(item: EventWithException<String>) = run { testSync.sendEvent("first ${item.event}") }
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }
         }
@@ -126,15 +128,15 @@ class SynchronousAggregatorTest {
     @Test
     fun `re enable after subscribed on`() {
         // --- Prepare ---
-        val publisher = SubmissionPublisher<String>(callerThreadTestExecutor, 10)
+        val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 10)
         val aggregator = Aggregator<String>(
             callerThreadTestExecutor,
             10,
             { testSync.sendEvent("aggregator subscribed") }
         )
-        val firstSubscriber = object : Flow.Subscriber<String> {
+        val firstSubscriber = object : Flow.Subscriber<EventWithException<String>> {
             override fun onSubscribe(subscription: Flow.Subscription?) = run { subscription?.request(1); testSync.sendEvent("first subscribed") }
-            override fun onNext(item: String?) = run { testSync.sendEvent("first $item") }
+            override fun onNext(item: EventWithException<String>) = run { testSync.sendEvent("first ${item.event}") }
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }
         }
@@ -144,13 +146,13 @@ class SynchronousAggregatorTest {
         aggregator.subscribe(firstSubscriber)
         testSync.assertEvent("first subscribed")
 
-        aggregator.onNext("item")
+        aggregator.onNext("item".asSuccess())
         testSync.assertNoEvent()
 
         publisher.subscribe(aggregator)
         testSync.assertEvent("aggregator subscribed")
 
-        aggregator.onNext("item")
+        aggregator.onNext("item".asSuccess())
         testSync.assertEvent("first item")
 
         testSync.assertNoEvent()

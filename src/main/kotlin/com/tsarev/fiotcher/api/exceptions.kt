@@ -5,6 +5,7 @@ package com.tsarev.fiotcher.api
  */
 open class FiotcherException : RuntimeException {
     constructor(message: String, cause: Throwable) : super(message, cause)
+    constructor(cause: Throwable) : super(cause)
     constructor(message: String) : super(message)
 }
 

@@ -1,5 +1,6 @@
 package com.tsarev.fiotcher.dflt.flows
 
+import com.tsarev.fiotcher.api.EventWithException
 import java.util.concurrent.Flow
 
 /**
@@ -14,8 +15,14 @@ class CommonListener<ResourceT : Any>(
     /**
      * Actual onNext handling.
      */
-    override fun doOnNext(item: ResourceT) {
-        onNextHandler(item)
+    override fun doOnNext(item: EventWithException<ResourceT>) {
+        handleErrors<Unit, ResourceT>(
+            handleErrors = { onErrorHandler(it); null },
+            item = item,
+            send = {}
+        ) {
+            onNextHandler(it)
+        }
     }
 
     override fun doOnSubscribe(subscription: Flow.Subscription) {

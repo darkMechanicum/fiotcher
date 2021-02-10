@@ -1,5 +1,7 @@
 package com.tsarev.fiotcher.dflt.flows
 
+import com.tsarev.fiotcher.api.EventWithException
+import com.tsarev.fiotcher.api.FiotcherException
 import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.dflt.Brake
 import com.tsarev.fiotcher.dflt.push
@@ -8,34 +10,60 @@ import java.util.concurrent.*
 /**
  * Resource transformer, that delegates to passed function how to split and publish.
  */
-class DelegatingTransformer<FromT : Any, ToT : Any, ListenerT>(
+class DelegatingAsyncTransformer<FromT : Any, ToT : Any, ListenerT>(
     executor: Executor = ForkJoinPool.commonPool(),
     maxCapacity: Int = Flow.defaultBufferSize(),
     private val chained: ListenerT,
     private val stoppingExecutor: Executor,
     private val onSubscribeHandler: (Flow.Subscription) -> Unit = {},
     private val transform: (FromT, (ToT) -> Unit) -> Unit,
-) : SingleSubscriptionSubscriber<FromT>(), Flow.Processor<FromT, ToT>
-        where ListenerT : ChainingListener<ToT>, ListenerT : Flow.Subscriber<ToT> {
+    private val handleErrors: ((Throwable) -> Throwable?)?,
+) : SingleSubscriptionSubscriber<FromT>(),
+    Flow.Processor<EventWithException<FromT>, EventWithException<ToT>>
+        where ListenerT : ChainingListener<ToT>,
+              ListenerT : Flow.Subscriber<EventWithException<ToT>> {
 
-    private val destination = SubmissionPublisher<ToT>(executor, maxCapacity)
+    private val destination = SubmissionPublisher<EventWithException<ToT>>(executor, maxCapacity)
 
     init {
         destination.subscribe(chained)
     }
 
-    override fun subscribe(subscriber: Flow.Subscriber<in ToT>?) {
+    override fun subscribe(subscriber: Flow.Subscriber<in EventWithException<ToT>>?) {
         if (!isStopped) destination.subscribe(subscriber)
     }
 
-    override fun doOnNext(item: FromT) {
-        transform(item) {
-            destination.submit(it)
+    /**
+     * Special wrapper execution.
+     */
+    class WrapperException(cause: Throwable) : FiotcherException(cause)
+
+    override fun doOnNext(item: EventWithException<FromT>) {
+        handleErrors<ToT, FromT>(
+            handleErrors, item, { destination.submit(it) }
+        ) { event ->
+            try {
+                transform(event) {
+                    try {
+                        destination.submit(EventWithException(it, null))
+                    } catch (cause: Throwable) {
+                        // Wrap inner submit error.
+                        throw WrapperException(cause)
+                    }
+                }
+            } catch (wrapped: WrapperException) {
+                val exception = FiotcherException(wrapped.cause!!)
+                exception.addSuppressed(wrapped)
+                throw exception
+            }
         }
+
         subscription?.request(1)
     }
 
     override fun doOnError(throwable: Throwable) {
+        // Stop all chain from non recoverable error.
+        chained.stop()
         chained.onError(throwable)
     }
 

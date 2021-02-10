@@ -9,16 +9,6 @@ import java.util.concurrent.Executor
 interface ChainingListener<ResourceT : Any> : Stoppable {
 
     /**
-     * Event handler for this listener.
-     */
-    fun onNext(item: ResourceT)
-
-    /**
-     * Error handler for this listener.
-     */
-    fun onError(throwable: Throwable)
-
-    /**
      * Create proxy listener, that will handle split events in new queue.
      *
      * @transformer a function that accepts [FromT] event and function to publish it further,
@@ -28,7 +18,8 @@ interface ChainingListener<ResourceT : Any> : Stoppable {
         executor: Executor,
         stoppingExecutor: Executor,
         maxCapacity: Int,
-        transformer: (FromT, (ResourceT) -> Unit) -> Unit
+        transformer: (FromT, (ResourceT) -> Unit) -> Unit,
+        handleErrors: ((Throwable) -> Throwable)?,
     ): ChainingListener<FromT>
 
     /**
@@ -38,7 +29,8 @@ interface ChainingListener<ResourceT : Any> : Stoppable {
      * thus allowing to make a number of publishing on its desire.
      */
     fun <FromT : Any> doSyncDelegateFrom(
-        transformer: (FromT, (ResourceT) -> Unit) -> Unit
+        transformer: (FromT, (ResourceT) -> Unit) -> Unit,
+        handleErrors: ((Throwable) -> Throwable)?,
     ): ChainingListener<FromT>
 
 }

@@ -1,6 +1,9 @@
 package com.tsarev.fiotcher.dflt
 
-import com.tsarev.fiotcher.api.*
+import com.tsarev.fiotcher.api.FileProcessorManager
+import com.tsarev.fiotcher.api.Processor
+import com.tsarev.fiotcher.api.Stoppable
+import com.tsarev.fiotcher.api.typedKey
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
 import org.w3c.dom.Document
 import org.xml.sax.helpers.DefaultHandler
@@ -23,18 +26,16 @@ class DefaultFileProcessorManager(
 
     override fun startTracking(path: File, key: String, recursively: Boolean): CompletionStage<out Stoppable> {
         val fileSystemTracker = FileSystemTracker(recursive = recursively)
-        return processor.trackerPool
-            .startTracker(path, fileSystemTracker, key)
+        return processor.startTracker(path, fileSystemTracker, key)
     }
 
     override fun stopTracking(path: File, key: String, force: Boolean): CompletionStage<*> {
-        return processor.trackerPool
-            .stopTracker(path, key, force)
+        return processor.stopTracker(path, key, force)
     }
 
     override fun handleLines(key: String, linedListener: (String) -> Unit): Stoppable {
-        val listener = with(processor.wayStation) {
-            createCommonListener(linedListener)
+        val listener = with(processor) {
+            createCommonListener(listener = linedListener)
                 .syncSplitFrom<InputStream, String> { stream ->
                     mutableListOf<String>().also { list ->
                         with(Scanner(stream)) {
@@ -43,50 +44,38 @@ class DefaultFileProcessorManager(
                     }
                 }
                 .syncChainFrom<File, InputStream> { getStreamOrNull(it) }
-                .asyncDelegateFrom<TypedEvents<File>, File> { bunch, publisher ->
-                    val changedFiles = bunch.filter { it.type == EventType.CHANGED }
-                    changedFiles.forEach { publisher(it.event) }
-                }
+                .asyncDelegateFrom<Collection<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
         }
-        processor.trackerListenerPool.registerListener(listener, key.typedKey())
+        processor.registerListener(listener, key.typedKey())
         return listener
     }
 
     override fun handleFiles(key: String, fileListener: (File) -> Unit): Stoppable {
-        val listener = with(processor.wayStation) {
-            createCommonListener(fileListener)
-                .asyncDelegateFrom<TypedEvents<File>, File> { bunch, publisher ->
-                    val changedFiles = bunch.filter { it.type == EventType.CHANGED }
-                    changedFiles.forEach { publisher(it.event) }
-                }
+        val listener = with(processor) {
+            createCommonListener(listener = fileListener)
+                .asyncDelegateFrom<Collection<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
         }
-        processor.trackerListenerPool.registerListener(listener, key.typedKey())
+        processor.registerListener(listener, key.typedKey())
         return listener
     }
 
     override fun handleSax(key: String, saxListener: DefaultHandler): Stoppable {
-        val listener = with(processor.wayStation) {
+        val listener = with(processor) {
             createCommonListener<InputStream> { saxParser.parse(it, saxListener) }
                 .syncChainFrom<File, InputStream> { getStreamOrNull(it) }
-                .asyncDelegateFrom<TypedEvents<File>, File> { bunch, publisher ->
-                    val changedFiles = bunch.filter { it.type == EventType.CHANGED }
-                    changedFiles.forEach { publisher(it.event) }
-                }
+                .asyncDelegateFrom<Collection<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
         }
-        processor.trackerListenerPool.registerListener(listener, key.typedKey())
+        processor.registerListener(listener, key.typedKey())
         return listener
     }
 
     override fun handleDom(key: String, domListener: (Document) -> Unit): Stoppable {
-        val listener = with(processor.wayStation) {
+        val listener = with(processor) {
             createCommonListener<InputStream> { val document = domParser.parse(it); domListener(document) }
                 .syncChainFrom<File, InputStream> { getStreamOrNull(it) }
-                .asyncDelegateFrom<TypedEvents<File>, File> { bunch, publisher ->
-                    val changedFiles = bunch.filter { it.type == EventType.CHANGED }
-                    changedFiles.forEach { publisher(it.event) }
-                }
+                .asyncDelegateFrom<Collection<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
         }
-        processor.trackerListenerPool.registerListener(listener, key.typedKey())
+        processor.registerListener(listener, key.typedKey())
         return listener
     }
 

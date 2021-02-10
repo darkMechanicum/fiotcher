@@ -42,8 +42,8 @@ class DefaultTrackerPool<WatchT : Any>(
         override val isStopped = true
         override fun stop(force: Boolean) = CompletableFuture.completedFuture(Unit)
         override fun run() = run { }
-        override fun doInit(executor: Executor) = object : Flow.Publisher<TypedEvents<WatchT>> {
-            override fun subscribe(subscriber: Flow.Subscriber<in TypedEvents<WatchT>>?) = run { }
+        override fun doInit(executor: Executor) = object : Flow.Publisher<EventWithException<InitialEventsBunch<WatchT>>> {
+            override fun subscribe(subscriber: Flow.Subscriber<in EventWithException<InitialEventsBunch<WatchT>>>?) = run { }
         }
     }
 
@@ -93,7 +93,7 @@ class DefaultTrackerPool<WatchT : Any>(
             var wrappedTracker: Tracker<WatchT>? = null
             try {
                 // We don't need additional type info, since there can only be one tracker by string key.
-                val asTyped = key.typedKey<TypedEvents<*>>()
+                val asTyped = key.typedKey<InitialEventsBunch<WatchT>>()
                 // Try to init tracker and subscribe to its publisher.
                 // Can throw exception due to pool stopping, but we will handle it later.
                 val targetAggregator = aggregatorPool.getAggregator(asTyped)

@@ -1,6 +1,7 @@
 package com.tsarev.fiotcher.internals.tracker
 
-import com.tsarev.fiotcher.api.TypedEvents
+import com.tsarev.fiotcher.api.EventWithException
+import com.tsarev.fiotcher.dflt.InitialEventsBunch
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.Test
@@ -24,13 +25,14 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = 0)
         val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<TypedEvents<File>> {
-            override fun onNext(item: TypedEvents<File>?) {
+        val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
+            override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
                 // extended pause because of [Thread.sleep(2000)] delays below.
                 testAsync.sendEvent("files changed")
-                item?.map { it.type to it.event.absolutePath }
-                    ?.sortedBy { it.second }
-                    ?.forEach { testAsync.sendEvent("file ${it.second} has been ${it.first}") }
+                item.event
+                    ?.map { it.absolutePath }
+                    ?.sorted()
+                    ?.forEach { testAsync.sendEvent("file $it has been changed") }
             }
 
             override fun onError(throwable: Throwable?) = run { }
@@ -47,20 +49,20 @@ class FileSystemTrackerTest {
         Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.
         val someFile2 = tempDir.createFile("someFile2")
         testAsync.assertEvent("files changed") // Higher timeout
-        testAsync.assertEvent("file ${someFile.absolutePath} has been CREATED")
+        testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
         testAsync.assertEvent("files changed")
-        testAsync.assertEvent("file ${someFile2.absolutePath} has been CREATED")
+        testAsync.assertEvent("file ${someFile2.absolutePath} has been changed")
 
         // Test changing.
         someFile.appendText("some text")
         testAsync.assertEvent("files changed")
-        testAsync.assertEvent("file ${someFile.absolutePath} has been CHANGED")
+        testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
 
         // Test deletion.
         someFile.delete()
         Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.
         testAsync.assertEvent("files changed")
-        testAsync.assertEvent("file ${someFile.absolutePath} has been DELETED")
+        testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
 
         testAsync.assertNoEvent()
 
@@ -74,13 +76,14 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = 200)
         val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<TypedEvents<File>> {
-            override fun onNext(item: TypedEvents<File>?) {
+        val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
+            override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
                 // extended pause because of [Thread.sleep(2000)] delays below.
                 testAsync.sendEvent("files changed")
-                item?.map { it.type to it.event.absolutePath }
-                    ?.sortedBy { it.second }
-                    ?.forEach { testAsync.sendEvent("file ${it.second} has been ${it.first}") }
+                item.event
+                    ?.map { it.absolutePath }
+                    ?.sorted()
+                    ?.forEach { testAsync.sendEvent("file $it has been changed") }
             }
 
             override fun onError(throwable: Throwable?) = run { }
@@ -99,15 +102,15 @@ class FileSystemTrackerTest {
         Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.
         val someFile2 = tempDir.createFile("someFile2")
         testAsync.assertEvent("files changed") // Higher timeout
-        testAsync.assertEvent("file ${someFile.absolutePath} has been CREATED")
-        testAsync.assertEvent("file ${someFile2.absolutePath} has been CREATED")
+        testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
+        testAsync.assertEvent("file ${someFile2.absolutePath} has been changed")
 
         // Test deletion debouncing.
         someFile.appendText("some text")
         someFile.delete()
         testAsync.assertEvent("files changed")
-        testAsync.assertEvent("file ${someFile.absolutePath} has been CHANGED")
-        testAsync.assertEvent("file ${someFile.absolutePath} has been DELETED")
+        testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
+        testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
 
         testAsync.assertNoEvent()
 
@@ -121,13 +124,14 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = 0, recursive = true)
         val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<TypedEvents<File>> {
-            override fun onNext(item: TypedEvents<File>?) {
+        val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
+            override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
                 // extended pause because of [Thread.sleep(2000)] delays below.
                 testAsync.sendEvent("files changed")
-                item?.map { it.type to it.event.absolutePath }
-                    ?.sortedBy { it.second }
-                    ?.forEach { testAsync.sendEvent("file ${it.second} has been ${it.first}") }
+                item.event
+                    ?.map { it.absolutePath }
+                    ?.sorted()
+                    ?.forEach { testAsync.sendEvent("file $it has been changed") }
             }
 
             override fun onError(throwable: Throwable?) = run { }
@@ -149,7 +153,7 @@ class FileSystemTrackerTest {
         Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.
         val someFile = someInnerDir.createFile("someFile")
         testAsync.assertEvent("files changed") // Higher timeout
-        testAsync.assertEvent("file ${someFile.absolutePath} has been CREATED")
+        testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
 
         testAsync.assertNoEvent()
 
@@ -163,13 +167,14 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = 400, recursive = true)
         val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<TypedEvents<File>> {
-            override fun onNext(item: TypedEvents<File>?) {
+        val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
+            override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
                 // extended pause because of [Thread.sleep(2000)] delays below.
                 testAsync.sendEvent("files changed")
-                item?.map { it.type to it.event.absolutePath }
-                    ?.sortedBy { it.second }
-                    ?.forEach { testAsync.sendEvent("file ${it.second} has been ${it.first}") }
+                item.event
+                    ?.map { it.absolutePath }
+                    ?.sorted()
+                    ?.forEach { testAsync.sendEvent("file $it has been changed") }
             }
 
             override fun onError(throwable: Throwable?) = run { }
@@ -191,9 +196,9 @@ class FileSystemTrackerTest {
         val someFile2 = tempDir.createFile("someFile2")
         val someFile3 = tempDir.createFile("someFile3")
         testAsync.assertEvent("files changed") // Higher timeout
-        testAsync.assertEvent("file ${someFile.absolutePath} has been CREATED")
-        testAsync.assertEvent("file ${someFile2.absolutePath} has been CREATED")
-        testAsync.assertEvent("file ${someFile3.absolutePath} has been CREATED")
+        testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
+        testAsync.assertEvent("file ${someFile2.absolutePath} has been changed")
+        testAsync.assertEvent("file ${someFile3.absolutePath} has been changed")
 
         testAsync.assertNoEvent()
 
@@ -207,13 +212,14 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = 400, recursive = true)
         val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<TypedEvents<File>> {
-            override fun onNext(item: TypedEvents<File>?) {
+        val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
+            override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
                 // extended pause because of [Thread.sleep(2000)] delays below.
                 testAsync.sendEvent("files changed")
-                item?.map { it.type to it.event.absolutePath }
-                    ?.sortedBy { it.second }
-                    ?.forEach { testAsync.sendEvent("file ${it.second} has been ${it.first}") }
+                item.event
+                    ?.map { it.absolutePath }
+                    ?.sorted()
+                    ?.forEach { testAsync.sendEvent("file $it has been changed") }
             }
 
             override fun onError(throwable: Throwable?) = run { }
@@ -236,7 +242,7 @@ class FileSystemTrackerTest {
         Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.
         tempDir.createFile("someFile3")
         testAsync.assertEvent("files changed") // Higher timeout
-        testAsync.assertEvent("file ${someFile.absolutePath} has been CREATED")
+        testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
 
         testAsync.assertNoEvent()
 

@@ -1,10 +1,10 @@
 package com.tsarev.fiotcher.dflt.trackers
 
-import com.tsarev.fiotcher.api.EventType
-import com.tsarev.fiotcher.api.TypedEvents
+import com.tsarev.fiotcher.api.EventWithException
+import com.tsarev.fiotcher.api.asSuccess
 import com.tsarev.fiotcher.api.pool.Tracker
-import com.tsarev.fiotcher.api.withType
 import com.tsarev.fiotcher.dflt.Brake
+import com.tsarev.fiotcher.dflt.InitialEventsBunch
 import com.tsarev.fiotcher.dflt.push
 import java.io.File
 import java.nio.file.*
@@ -81,7 +81,7 @@ class FileSystemTracker(
     /**
      * Create brand new publisher.
      */
-    private lateinit var publisher: SubmissionPublisher<TypedEvents<File>>
+    private lateinit var publisher: SubmissionPublisher<EventWithException<InitialEventsBunch<File>>>
 
     override val isStopped get() = brake.get() != null
 
@@ -90,7 +90,7 @@ class FileSystemTracker(
      */
     override fun doInit(
         executor: Executor
-    ): Flow.Publisher<TypedEvents<File>> {
+    ): Flow.Publisher<EventWithException<InitialEventsBunch<File>>> {
         if (!resourceBundle.isDirectory) throw IllegalArgumentException("$resourceBundle is not a directory!")
         publisher = SubmissionPublisher(executor, Flow.defaultBufferSize())
         registerRecursively(resourceBundle)
@@ -128,8 +128,11 @@ class FileSystemTracker(
                         }
                         // Send event, if not empty.
                         if (allEntries.isNotEmpty()) {
-                            val events = allEntries.map { it.resource withType it.type }
-                            publisher.submit(TypedEvents(events))
+                            // Watch only changed and created entities.
+                            val events = allEntries
+                                .filter { it.type == EventType.CREATED || it.type == EventType.CHANGED }
+                                .map { it.resource }
+                            publisher.submit(InitialEventsBunch(events).asSuccess())
                         }
                     }
                 } catch (interrupted: InterruptedException) {
@@ -308,5 +311,25 @@ class FileSystemTracker(
     private fun <T> WatchEvent<*>.typedContext(
         kind: WatchEvent.Kind<T>
     ) = kind.type().cast(this.context())
+
+    /**
+     * What happened to the file.
+     */
+    enum class EventType {
+        /**
+         * Resource is created.
+         */
+        CREATED,
+
+        /**
+         * Resource content is changed in any way.
+         */
+        CHANGED,
+
+        /**
+         * Resource is deleted.
+         */
+        DELETED
+    }
 
 }

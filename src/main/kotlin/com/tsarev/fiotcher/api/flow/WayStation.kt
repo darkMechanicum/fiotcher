@@ -13,14 +13,20 @@ interface WayStation {
      *
      * @param listener actual listening logic
      */
-    fun <ResourceT : Any> createCommonListener(listener: (ResourceT) -> Unit): ChainingListener<ResourceT>
+    fun <ResourceT : Any> createCommonListener(
+        handleErrors: ((Throwable) -> Throwable)? = null,
+        listener: (ResourceT) -> Unit,
+    ): ChainingListener<ResourceT>
 
     /**
      * Aggregate events of new event type.
      *
      * @param key new event type
      */
-    fun <ResourceT : Any> doAggregate(key: KClassTypedKey<ResourceT>): ChainingListener<ResourceT>
+    fun <ResourceT : Any> doAggregate(
+        handleErrors: ((Throwable) -> Throwable)? = null,
+        key: KClassTypedKey<ResourceT>,
+    ): ChainingListener<ResourceT>
 
     /**
      * Chain from listener, that will transform its events to this listener ones synchronously.
@@ -28,7 +34,8 @@ interface WayStation {
      * @param transformer event transforming logic
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncChainFrom(
-        transformer: (FromT) -> ToT?
+        handleErrors: ((Throwable) -> Throwable)? = null,
+        transformer: (FromT) -> ToT?,
     ): ChainingListener<FromT>
 
     /**
@@ -37,7 +44,8 @@ interface WayStation {
      * @param transformer event to collection transforming logic
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncSplitFrom(
-        transformer: (FromT) -> Collection<ToT?>?
+        handleErrors: ((Throwable) -> Throwable)? = null,
+        transformer: (FromT) -> Collection<ToT?>?,
     ): ChainingListener<FromT>
 
     /**
@@ -47,7 +55,8 @@ interface WayStation {
      * thus allowing to make a number of publishing on its desire.
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncDelegateFrom(
-        transformer: (FromT, (ToT) -> Unit) -> Unit
+        handleErrors: ((Throwable) -> Throwable)? = null,
+        transformer: (FromT, (ToT) -> Unit) -> Unit,
     ): ChainingListener<FromT>
 
     /**
@@ -57,7 +66,8 @@ interface WayStation {
      * @param transformer event transforming logic
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncChainFrom(
-        transformer: (FromT) -> ToT?
+        handleErrors: ((Throwable) -> Throwable)? = null,
+        transformer: (FromT) -> ToT?,
     ): ChainingListener<FromT>
 
     /**
@@ -67,7 +77,8 @@ interface WayStation {
      * @param transformer event to collection transforming logic
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncSplitFrom(
-        transformer: (FromT) -> Collection<ToT?>?
+        handleErrors: ((Throwable) -> Throwable)? = null,
+        transformer: (FromT) -> Collection<ToT?>?,
     ): ChainingListener<FromT>
 
     /**
@@ -77,7 +88,8 @@ interface WayStation {
      * thus allowing to make a number of publishing on its desire.
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncDelegateFrom(
-        transformer: (FromT, (ToT) -> Unit) -> Unit
+        handleErrors: ((Throwable) -> Throwable)? = null,
+        transformer: (FromT, (ToT) -> Unit) -> Unit,
     ): ChainingListener<FromT>
 
 }

@@ -1,11 +1,12 @@
 package com.tsarev.fiotcher.dflt
 
+import com.tsarev.fiotcher.api.EventWithException
 import com.tsarev.fiotcher.api.KClassTypedKey
 import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.api.flow.WayStation
 import com.tsarev.fiotcher.dflt.flows.Aggregator
 import com.tsarev.fiotcher.dflt.flows.CommonListener
-import com.tsarev.fiotcher.dflt.flows.DelegatingTransformer
+import com.tsarev.fiotcher.dflt.flows.DelegatingAsyncTransformer
 import com.tsarev.fiotcher.dflt.flows.SingleSubscriptionSubscriber
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Flow
@@ -13,7 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Default implementation of [WayStation] that uses [DelegatingTransformer]
+ * Default implementation of [WayStation] that uses [DelegatingAsyncTransformer]
  * for asynchronous event transforming and anonymous objects for
  * synchronous transforming.
  */
@@ -39,43 +40,62 @@ class DefaultWayStation(
     private val aggregatorPool: DefaultAggregatorPool
 ) : WayStation {
 
-    override fun <ResourceT : Any> createCommonListener(listener: (ResourceT) -> Unit) = CommonListener(listener)
+    override fun <ResourceT : Any> createCommonListener(
+        handleErrors: ((Throwable) -> Throwable)?,
+        listener: (ResourceT) -> Unit,
+    ) = CommonListener(listener)
 
-    override fun <ResourceT : Any> doAggregate(key: KClassTypedKey<ResourceT>): ChainingListener<ResourceT> {
+    override fun <ResourceT : Any> doAggregate(
+        handleErrors: ((Throwable) -> Throwable)?,
+        key: KClassTypedKey<ResourceT>,
+    ): ChainingListener<ResourceT> {
         val aggregator = aggregatorPool.getAggregator(key)
         val proxy = SubscriptionProxy(aggregator)
         aggregator.onSubscribe(proxy)
         return proxy
     }
 
-    override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncChainFrom(transformer: (FromT) -> ToT?) =
-        syncSplitFrom<FromT, ToT> { event -> listOf(transformer(event)) }
+    override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncChainFrom(
+        handleErrors: ((Throwable) -> Throwable)?,
+        transformer: (FromT) -> ToT?,
+    ) = syncSplitFrom<FromT, ToT>(handleErrors) { event -> listOf(transformer(event)) }
 
-    override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncSplitFrom(transformer: (FromT) -> Collection<ToT?>?) =
-        syncDelegateFrom<FromT, ToT> { event, publisher ->
-            val split = transformer(event)
-            split?.filterNotNull()?.forEach { publisher(it) }
-        }
+    override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncSplitFrom(
+        handleErrors: ((Throwable) -> Throwable)?,
+        transformer: (FromT) -> Collection<ToT?>?,
+    ) = syncDelegateFrom<FromT, ToT>(handleErrors) { event, publisher ->
+        val split = transformer(event)
+        split?.filterNotNull()?.forEach { publisher(it) }
+    }
 
-    override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncDelegateFrom(transformer: (FromT, (ToT) -> Unit) -> Unit) =
-        this.doSyncDelegateFrom(transformer)
+    override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncDelegateFrom(
+        handleErrors: ((Throwable) -> Throwable)?,
+        transformer: (FromT, (ToT) -> Unit) -> Unit,
+    ) = this.doSyncDelegateFrom(transformer, handleErrors)
 
-    override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncChainFrom(transformer: (FromT) -> ToT?) =
-        asyncSplitFrom<FromT, ToT> { listOf(transformer(it)) }
+    override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncChainFrom(
+        handleErrors: ((Throwable) -> Throwable)?,
+        transformer: (FromT) -> ToT?,
+    ) = asyncSplitFrom<FromT, ToT>(handleErrors) { listOf(transformer(it)) }
 
-    override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncSplitFrom(transformer: (FromT) -> Collection<ToT?>?) =
-        asyncDelegateFrom<FromT, ToT> { event, publisher ->
-            val split = transformer(event)
-            split?.filterNotNull()?.forEach { publisher(it) }
-        }
+    override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncSplitFrom(
+        handleErrors: ((Throwable) -> Throwable)?,
+        transformer: (FromT) -> Collection<ToT?>?,
+    ) = asyncDelegateFrom<FromT, ToT>(handleErrors) { event, publisher ->
+        val split = transformer(event)
+        split?.filterNotNull()?.forEach { publisher(it) }
+    }
 
-    override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncDelegateFrom(transformer: (FromT, (ToT) -> Unit) -> Unit) =
-        doAsyncDelegateFrom(
-            transformerExecutorService,
-            stoppingExecutorService,
-            maxTransformerQueueCapacity,
-            transformer
-        )
+    override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncDelegateFrom(
+        handleErrors: ((Throwable) -> Throwable)?,
+        transformer: (FromT, (ToT) -> Unit) -> Unit,
+    ) = doAsyncDelegateFrom(
+        executor = transformerExecutorService,
+        stoppingExecutor = stoppingExecutorService,
+        maxCapacity = maxTransformerQueueCapacity,
+        transformer = transformer,
+        handleErrors = handleErrors
+    )
 
     /**
      * Class that represents [Flow.Subscription] connection to aggregator.
@@ -86,7 +106,7 @@ class DefaultWayStation(
         private val requested = AtomicLong(0)
         private val canceled = AtomicBoolean(false)
 
-        override fun doOnNext(item: EventT) {
+        override fun doOnNext(item: EventWithException<EventT>) {
             if (!canceled.get()) {
                 val lowered = requested.decrementAndGet()
                 if (lowered >= 0) aggregator?.onNext(item)
@@ -95,7 +115,7 @@ class DefaultWayStation(
         }
 
         override fun request(n: Long) {
-            while(true) {
+            while (true) {
                 val expected = requested.get()
                 // Check for overflow.
                 val toSet = if (Long.MAX_VALUE - expected < n) Long.MAX_VALUE else expected + n

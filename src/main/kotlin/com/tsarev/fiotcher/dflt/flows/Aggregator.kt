@@ -1,5 +1,6 @@
 package com.tsarev.fiotcher.dflt.flows
 
+import com.tsarev.fiotcher.api.EventWithException
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.Brake
 import java.util.concurrent.*
@@ -20,12 +21,12 @@ class Aggregator<ResourceT : Any>(
     executor: Executor = ForkJoinPool.commonPool(),
     maxCapacity: Int = Flow.defaultBufferSize(),
     private val onSubscribeHandler: (Flow.Subscription) -> Unit = { }
-) : Flow.Processor<ResourceT, ResourceT>, Stoppable {
+) : Flow.Processor<EventWithException<ResourceT>, EventWithException<ResourceT>>, Stoppable {
 
     /**
      * Aggregator publisher.
      */
-    private val destination = SubmissionPublisher<ResourceT>(executor, maxCapacity)
+    private val destination = SubmissionPublisher<EventWithException<ResourceT>>(executor, maxCapacity)
 
     /**
      * Registered subscriptions.
@@ -39,12 +40,12 @@ class Aggregator<ResourceT : Any>(
 
     override val isStopped: Boolean get() = brake.get() != null
 
-    override fun subscribe(subscriber: Flow.Subscriber<in ResourceT>?) {
+    override fun subscribe(subscriber: Flow.Subscriber<in EventWithException<ResourceT>>?) {
         if (subscriber == null) throw NullPointerException()
         destination.subscribe(subscriber)
     }
 
-    override fun onNext(item: ResourceT) {
+    override fun onNext(item: EventWithException<ResourceT>) {
         if (!isStopped) destination.submit(item)
     }
 

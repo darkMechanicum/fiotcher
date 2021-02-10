@@ -1,5 +1,7 @@
 package com.tsarev.fiotcher.internals.flow
 
+import com.tsarev.fiotcher.api.EventWithException
+import com.tsarev.fiotcher.api.asSuccess
 import com.tsarev.fiotcher.dflt.flows.Aggregator
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.AfterEach
@@ -35,26 +37,26 @@ class AsynchronousAggregatorTest {
             beforeStart = { testAsync.sendEvent("publisher executor started") },
             afterCompletion = { testAsync.sendEvent("publisher executor finished") },
         )
-        val publisher = SubmissionPublisher<String>(publisherExecutor, 10)
+        val publisher = SubmissionPublisher<EventWithException<String>>(publisherExecutor, 10)
         val aggregator = Aggregator<String>(
             aggregatorExecutor,
             10,
             { testAsync.sendEvent("aggregator subscribed") }
         )
 
-        val firstSubscriber = object : Flow.Subscriber<String> {
+        val firstSubscriber = object : Flow.Subscriber<EventWithException<String>> {
             override fun onSubscribe(subscription: Flow.Subscription?) =
                 run { subscription?.request(1); testAsync.sendEvent("first subscribed") }
 
-            override fun onNext(item: String?) = run { testAsync.sendEvent("first $item") }
+            override fun onNext(item: EventWithException<String>) = run { testAsync.sendEvent("first ${item.event}") }
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }
         }
-        val secondSubscriber = object : Flow.Subscriber<String> {
+        val secondSubscriber = object : Flow.Subscriber<EventWithException<String>> {
             override fun onSubscribe(subscription: Flow.Subscription?) =
                 run { subscription?.request(1); testAsync.sendEvent("second subscribed") }
 
-            override fun onNext(item: String?) = run { testAsync.sendEvent("second $item") }
+            override fun onNext(item: EventWithException<String>) = run { testAsync.sendEvent("second ${item.event}") }
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }
         }
@@ -83,7 +85,7 @@ class AsynchronousAggregatorTest {
 
         // Test sending events.
         publisherExecutor.activate {
-            publisher.submit("item")
+            publisher.submit("item".asSuccess())
             testAsync.assertEvent("publisher executor started")
             testAsync.assertEvent("publisher executor finished")
         }
@@ -111,18 +113,18 @@ class AsynchronousAggregatorTest {
             beforeStart = { testAsync.sendEvent("publisher executor started") },
             afterCompletion = { testAsync.sendEvent("publisher executor finished") },
         )
-        val publisher = SubmissionPublisher<String>(publisherExecutor, 10)
+        val publisher = SubmissionPublisher<EventWithException<String>>(publisherExecutor, 10)
         val aggregator = Aggregator<String>(
             aggregatorExecutor,
             10,
             { testAsync.sendEvent("aggregator subscribed") }
         )
 
-        val firstSubscriber = object : Flow.Subscriber<String> {
+        val firstSubscriber = object : Flow.Subscriber<EventWithException<String>> {
             override fun onSubscribe(subscription: Flow.Subscription?) =
                 run { subscription?.request(1); testAsync.sendEvent("first subscribed") }
 
-            override fun onNext(item: String?) = run { testAsync.sendEvent("first $item") }
+            override fun onNext(item: EventWithException<String>) = run { testAsync.sendEvent("first ${item.event}") }
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }
         }
@@ -146,7 +148,7 @@ class AsynchronousAggregatorTest {
 
         // Test stop after non processed event.
         publisherExecutor.activate {
-            publisher.submit("item")
+            publisher.submit("item".asSuccess())
             testAsync.assertEvent("publisher executor started")
             testAsync.assertEvent("publisher executor finished")
         }
@@ -177,18 +179,18 @@ class AsynchronousAggregatorTest {
             beforeStart = { testAsync.sendEvent("publisher executor started") },
             afterCompletion = { testAsync.sendEvent("publisher executor finished") },
         )
-        val publisher = SubmissionPublisher<String>(publisherExecutor, 10)
+        val publisher = SubmissionPublisher<EventWithException<String>>(publisherExecutor, 10)
         val aggregator = Aggregator<String>(
             aggregatorExecutor,
             10,
             { testAsync.sendEvent("aggregator subscribed") }
         )
 
-        val firstSubscriber = object : Flow.Subscriber<String> {
+        val firstSubscriber = object : Flow.Subscriber<EventWithException<String>> {
             override fun onSubscribe(subscription: Flow.Subscription?) =
                 run { subscription?.request(1); testAsync.sendEvent("first subscribed") }
 
-            override fun onNext(item: String?) = run { testAsync.sendEvent("first $item") }
+            override fun onNext(item: EventWithException<String>) = run { testAsync.sendEvent("first ${item.event}") }
             override fun onError(throwable: Throwable?) = run { }
             override fun onComplete() = run { }
         }
@@ -217,7 +219,7 @@ class AsynchronousAggregatorTest {
             testAsync.assertEvent("publisher executor started")
             testAsync.assertEvent("publisher executor finished")
         }
-        publisher.submit("item")
+        publisher.submit("item".asSuccess())
         publisherExecutor.activate {
             // no-op, just allowing publisher to end event to aggregator.
         }
@@ -237,7 +239,7 @@ class AsynchronousAggregatorTest {
             beforeStart = { testAsync.sendEvent("publisher executor started") },
             afterCompletion = { testAsync.sendEvent("publisher executor finished") },
         )
-        val publisher = SubmissionPublisher<String>(publisherExecutor, 10)
+        val publisher = SubmissionPublisher<EventWithException<String>>(publisherExecutor, 10)
         val aggregator = Aggregator<String>(
             aggregatorExecutor,
             10,

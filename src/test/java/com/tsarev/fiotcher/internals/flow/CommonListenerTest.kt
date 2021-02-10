@@ -1,6 +1,8 @@
 package com.tsarev.fiotcher.internals.flow
 
+import com.tsarev.fiotcher.api.EventWithException
 import com.tsarev.fiotcher.api.ListenerIsStopped
+import com.tsarev.fiotcher.api.asSuccess
 import com.tsarev.fiotcher.dflt.flows.CommonListener
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.Assertions
@@ -18,14 +20,14 @@ class CommonListenerTest {
     fun `send two events`() {
         // Prepare.
         val listener = CommonListener<String>({ testSync.sendEvent(it) }, { testSync.sendEvent("subscribed") })
-        val publisher = SubmissionPublisher<String>(callerThreadTestExecutor, 100)
+        val publisher = SubmissionPublisher< EventWithException<String>>(callerThreadTestExecutor, 100)
 
         // Test.
         publisher.subscribe(listener)
         testSync.assertEvent("subscribed")
-        publisher.submit("one")
+        publisher.submit("one".asSuccess())
         testSync.assertEvent("one")
-        publisher.submit("two")
+        publisher.submit("two".asSuccess())
         testSync.assertEvent("two")
         testSync.assertNoEvent()
     }
@@ -34,14 +36,14 @@ class CommonListenerTest {
     fun `stop after one submit`() {
         // Prepare.
         val listener = CommonListener<String>({ testSync.sendEvent(it) }, { testSync.sendEvent("subscribed") })
-        val publisher = SubmissionPublisher<String>(callerThreadTestExecutor, 100)
+        val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
 
         // Test.
         publisher.subscribe(listener)
         testSync.assertEvent("subscribed")
-        publisher.submit("one")
+        publisher.submit("one".asSuccess())
         listener.stop()
-        publisher.submit("two")
+        publisher.submit("two".asSuccess())
         testSync.assertEvent("one")
         testSync.assertNoEvent()
     }
@@ -50,14 +52,14 @@ class CommonListenerTest {
     fun `stop before submit`() {
         // Prepare.
         val listener = CommonListener<String>({ testSync.sendEvent(it) }, { testSync.sendEvent("subscribed") })
-        val publisher = SubmissionPublisher<String>(callerThreadTestExecutor, 100)
+        val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
 
         // Test.
         publisher.subscribe(listener)
         testSync.assertEvent("subscribed")
         listener.stop()
-        publisher.submit("one")
-        publisher.submit("two")
+        publisher.submit("one".asSuccess())
+        publisher.submit("two".asSuccess())
         testSync.assertNoEvent()
     }
 
@@ -68,7 +70,7 @@ class CommonListenerTest {
             onNextHandler = { },
             onErrorHandler = { testSync.sendEvent(it) }
         )
-        val publisher = SubmissionPublisher<String>(callerThreadTestExecutor, 100)
+        val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
 
         // Test.
         listener.stop()

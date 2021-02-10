@@ -1,6 +1,9 @@
 package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.Processor
+import com.tsarev.fiotcher.api.flow.WayStation
+import com.tsarev.fiotcher.api.pool.ListenerPool
+import com.tsarev.fiotcher.api.pool.TrackerPool
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.Flow
@@ -46,30 +49,31 @@ class DefaultProcessor<WatchT : Any>(
      */
     aggregatorMaxCapacity: Int = Flow.defaultBufferSize() shl 1,
 
-    ) : Processor<WatchT> {
-
-    override val aggregatorPool = DefaultAggregatorPool(
+    private val aggregatorPool: DefaultAggregatorPool = DefaultAggregatorPool(
         aggregatorMaxCapacity,
         queueExecutorService
-    )
+    ),
 
-    override val wayStation = DefaultWayStation(
+    private val wayStation: WayStation = DefaultWayStation(
         maxTransformerCapacity,
         transformerExecutorService,
         stoppingExecutorService,
         aggregatorPool
-    )
+    ),
 
-    override val trackerPool = DefaultTrackerPool<WatchT>(
+    private val trackerPool: TrackerPool<WatchT> = DefaultTrackerPool<WatchT>(
         trackerExecutor,
         queueExecutorService,
         registrationExecutorService,
         stoppingExecutorService,
         aggregatorPool
-    )
+    ),
 
-    override val trackerListenerPool = DefaultListenerPool(
+    private val listenerPool: ListenerPool = DefaultListenerPool(
         aggregatorPool
-    )
+    ),
 
-}
+    ) : Processor<WatchT>,
+    TrackerPool<WatchT> by trackerPool,
+    ListenerPool by listenerPool,
+    WayStation by wayStation

@@ -1,7 +1,8 @@
 package com.tsarev.fiotcher.api.pool
 
+import com.tsarev.fiotcher.api.EventWithException
 import com.tsarev.fiotcher.api.Stoppable
-import com.tsarev.fiotcher.api.TypedEvents
+import com.tsarev.fiotcher.dflt.InitialEventsBunch
 import java.util.concurrent.Executor
 import java.util.concurrent.Flow
 
@@ -27,7 +28,7 @@ abstract class Tracker<WatchT : Any> : Runnable, Stoppable {
     fun init(
         resourceBundle: WatchT,
         executor: Executor
-    ): Flow.Publisher<TypedEvents<WatchT>> {
+    ): Flow.Publisher<EventWithException<InitialEventsBunch<WatchT>>> {
         // TODO Add idempotency support.
         this.resourceBundle = resourceBundle
         return doInit(executor)
@@ -38,6 +39,6 @@ abstract class Tracker<WatchT : Any> : Runnable, Stoppable {
      */
     abstract fun doInit(
         executor: Executor
-    ): Flow.Publisher<TypedEvents<WatchT>>
+    ): Flow.Publisher<EventWithException<InitialEventsBunch<WatchT>>>
 
 }

@@ -1,7 +1,9 @@
 package com.tsarev.fiotcher.internals.flow
 
+import com.tsarev.fiotcher.api.EventWithException
+import com.tsarev.fiotcher.api.asSuccess
 import com.tsarev.fiotcher.dflt.flows.CommonListener
-import com.tsarev.fiotcher.dflt.flows.DelegatingTransformer
+import com.tsarev.fiotcher.dflt.flows.DelegatingAsyncTransformer
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions
@@ -12,9 +14,9 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 
 /**
- * Testing [DelegatingTransformer].
+ * Testing [DelegatingAsyncTransformer].
  */
-class AsynchronousDelegatingTransformerTest {
+class AsynchronousDelegatingAsyncTransformerTest {
 
     private val testAsync = AsyncTestEvents()
 
@@ -35,16 +37,17 @@ class AsynchronousDelegatingTransformerTest {
             { testAsync.sendEvent("executor start") },
             { testAsync.sendEvent("executor finished") }
         )
-        val publisher = SubmissionPublisher<String>(executor, 10)
+        val publisher = SubmissionPublisher< EventWithException<String>>(executor, 10)
 
         // Test.
-        val listener = DelegatingTransformer<String, String, CommonListener<String>>(
+        val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
             executor = executor,
             maxCapacity = 10,
             chained = chained,
             stoppingExecutor = executor,
             onSubscribeHandler = { testAsync.sendEvent("subscribed") },
-            transform = { it, publish -> testAsync.sendEvent(it); publish(it) }
+            transform = { it, publish -> testAsync.sendEvent(it); publish(it) },
+            handleErrors = null,
         )
 
         executor.activate {
@@ -60,7 +63,7 @@ class AsynchronousDelegatingTransformerTest {
             testAsync.assertEvent("executor finished")
 
             // First submit.
-            publisher.submit("one")
+            publisher.submit("one".asSuccess())
             testAsync.assertEvent("executor start")
             testAsync.assertEvent("one")
             testAsync.assertEvent("executor finished")
@@ -69,7 +72,7 @@ class AsynchronousDelegatingTransformerTest {
             testAsync.assertEvent("executor finished")
 
             // Second submit.
-            publisher.submit("two")
+            publisher.submit("two".asSuccess())
             testAsync.assertEvent("executor start")
             testAsync.assertEvent("two")
             testAsync.assertEvent("executor finished")
@@ -91,16 +94,17 @@ class AsynchronousDelegatingTransformerTest {
             { testAsync.sendEvent("executor start") },
             { testAsync.sendEvent("executor finished") }
         )
-        val publisher = SubmissionPublisher<String>(executor, 10)
+        val publisher = SubmissionPublisher<EventWithException<String>>(executor, 10)
 
         // Test.
-        val listener = DelegatingTransformer<String, String, CommonListener<String>>(
+        val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
             executor = executor,
             maxCapacity = 10,
             chained = chained,
             stoppingExecutor = executor,
             onSubscribeHandler = { testAsync.sendEvent("subscribed") },
-            transform = { it, publish -> testAsync.sendEvent(it); publish(it) }
+            transform = { it, publish -> testAsync.sendEvent(it); publish(it) },
+            handleErrors = null,
         )
 
         executor.activate {
@@ -116,7 +120,7 @@ class AsynchronousDelegatingTransformerTest {
             testAsync.assertEvent("executor finished")
 
             // First submit.
-            publisher.submit("one")
+            publisher.submit("one".asSuccess())
             testAsync.assertEvent("executor start")
             testAsync.assertEvent("one")
             testAsync.assertEvent("executor finished")
@@ -125,7 +129,7 @@ class AsynchronousDelegatingTransformerTest {
             testAsync.assertEvent("executor finished")
 
             // Stop and submit.
-            publisher.submit("two")
+            publisher.submit("two".asSuccess())
             testAsync.assertEvent("executor start")
             testAsync.assertEvent("two")
             testAsync.assertEvent("executor finished")
@@ -162,17 +166,18 @@ class AsynchronousDelegatingTransformerTest {
             { testAsync.sendEvent("stopping executor start") },
             { testAsync.sendEvent("stopping executor finished") }
         )
-        val publisher = SubmissionPublisher<String>(publisherExecutor, 10)
+        val publisher = SubmissionPublisher<EventWithException<String>>(publisherExecutor, 10)
 
         // --- Prepare ---
         // Start listener.
-        val listener = DelegatingTransformer<String, String, CommonListener<String>>(
+        val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
             executor = listenerExecutor,
             maxCapacity = 10,
             chained = chained,
             stoppingExecutor = stoppingExecutor,
             onSubscribeHandler = { testAsync.sendEvent("subscribed") },
             transform = { it, publish -> testAsync.sendEvent(it); publish(it) },
+            handleErrors = null,
         )
 
         // Test chained subscription.
@@ -193,7 +198,7 @@ class AsynchronousDelegatingTransformerTest {
         // Test submit.
         // Allow only publisher executor, imitating `not processed event`.
         publisherExecutor.activate {
-            publisher.submit("one")
+            publisher.submit("one".asSuccess())
             testAsync.assertEvent("publisher executor start")
             testAsync.assertEvent("one")
             testAsync.assertEvent("publisher executor finished")
@@ -240,17 +245,18 @@ class AsynchronousDelegatingTransformerTest {
             beforeStart = { testAsync.sendEvent("executor start") },
             afterCompletion = { testAsync.sendEvent("executor finished") }
         )
-        val publisher = SubmissionPublisher<String>(innerExecutor, 10)
+        val publisher = SubmissionPublisher<EventWithException<String>>(innerExecutor, 10)
 
         // --- Prepare ---
         // Start listener.
-        val listener = DelegatingTransformer<String, String, CommonListener<String>>(
+        val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
             executor = innerExecutor,
             maxCapacity = 10,
             chained = chained,
             stoppingExecutor = innerExecutor,
             onSubscribeHandler = { testAsync.sendEvent("subscribed") },
             transform = { it, publish -> testAsync.sendEvent(it); publish(it) },
+            handleErrors = null
         )
         publisher.subscribe(listener)
 

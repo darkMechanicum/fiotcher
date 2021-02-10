@@ -2,45 +2,19 @@ package com.tsarev.fiotcher.api
 
 import kotlin.reflect.KClass
 
-/**
- * Resource, wrapped with event type.
- */
-data class TypedEvent<T>(
-    val event: T,
-    val type: EventType
-)
-
-/**
- * Simple alias for collection of typed events.
- */
-class TypedEvents<WatchT>(
-    collection: Collection<TypedEvent<WatchT>>
-) : Collection<TypedEvent<WatchT>> by collection
-
-/**
- * What happened to resource.
- */
-enum class EventType {
-    /**
-     * Resource is created.
-     */
-    CREATED,
-
-    /**
-     * Resource content is changed in any way.
-     */
-    CHANGED,
-
-    /**
-     * Resource is deleted.
-     */
-    DELETED
+data class EventWithException<EventT : Any>(
+    val event: EventT?,
+    val exception: Throwable?
+) {
+    init {
+        if (event === null && exception === null) throw FiotcherException("Can't send empty event")
+    }
+    fun ifSuccess(block: (EventT) -> Unit) = if (event != null) block(event) else Unit
+    fun ifFailed(block: (Throwable) -> Unit) = if (exception != null) block(exception) else Unit
 }
 
-/**
- * Create typed event from type.
- */
-infix fun <T> T.withType(type: EventType) = TypedEvent(this, type)
+fun <T : Any> T.asSuccess() = EventWithException(this, null)
+fun <T : Any> Throwable.asFailure() = EventWithException<T>(null, this)
 
 /**
  * Typed key to use in pools and registers.
