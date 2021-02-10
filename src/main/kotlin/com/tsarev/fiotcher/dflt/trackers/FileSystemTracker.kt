@@ -119,7 +119,7 @@ class FileSystemTracker(
                                 // Reset previous key recklessly - finally at the bottom will do the job at failure.
                                 key?.reset()
                                 key = watchService.poll(debounceTimeoutMs, TimeUnit.MILLISECONDS)
-                                if (endTime < System.currentTimeMillis()) break
+                                if (forced.get() || endTime < System.currentTimeMillis()) break
                                 if (key == null) break
                                 allEntries.addNewEntries(processDirectoryEvent(key))
                             } catch (interrupted: InterruptedException) {
@@ -283,9 +283,9 @@ class FileSystemTracker(
     /**
      * Do stop.
      */
-    override fun stop(force: Boolean) = brake.push {
-        this.forced.set(force)
-    }
+    override fun stop(force: Boolean) = this
+        .forced.set(force)
+        .let { brake.push () }
 
     /**
      * Create brake synchronously.

@@ -229,10 +229,11 @@ class FileSystemTrackerTest {
 
         // Test creation.
         val someFile = tempDir.createFile("someFile")
+        Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.
         tracker.stop(true)
-        Thread.sleep(200) // Small pause to allow filesystem watcher to give away events.
+        Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.
         tempDir.createFile("someFile2")
-        Thread.sleep(200) // Small pause to allow filesystem watcher to give away events.
+        Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.
         tempDir.createFile("someFile3")
         testAsync.assertEvent("files changed") // Higher timeout
         testAsync.assertEvent("file ${someFile.absolutePath} has been CREATED")
