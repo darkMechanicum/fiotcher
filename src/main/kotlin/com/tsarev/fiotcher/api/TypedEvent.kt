@@ -9,6 +9,11 @@ data class TypedEvent<T>(
 )
 
 /**
+ * Simple alias for collection of typed events.
+ */
+typealias TypedEvents<WatchT> = Collection<TypedEvent<WatchT>>
+
+/**
  * What happened to resource.
  */
 enum class EventType {
@@ -27,3 +32,8 @@ enum class EventType {
      */
     DELETED
 }
+
+/**
+ * Create typed event from type.
+ */
+infix fun <T> T.withType(type: EventType) = TypedEvent(this, type)

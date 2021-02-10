@@ -5,7 +5,7 @@ import java.util.concurrent.Flow
 /**
  * Common resource listener.
  */
-class CommonListener<ResourceT: Any>(
+class CommonListener<ResourceT : Any>(
     private val onNextHandler: (ResourceT) -> Unit,
     private val onSubscribeHandler: (Flow.Subscription) -> Unit = {},
     private val onErrorHandler: (Throwable) -> Unit = {}

@@ -53,5 +53,10 @@ class DefaultWayStation(
         }
 
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncDelegateFrom(transformer: (FromT, (ToT) -> Unit) -> Unit) =
-        doAsyncDelegateFrom(transformerExecutorService, stoppingExecutorService, maxTransformerQueueCapacity, transformer)
+        doAsyncDelegateFrom(
+            transformerExecutorService,
+            stoppingExecutorService,
+            maxTransformerQueueCapacity,
+            transformer
+        )
 }

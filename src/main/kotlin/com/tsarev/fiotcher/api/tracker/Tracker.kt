@@ -1,22 +1,10 @@
 package com.tsarev.fiotcher.api.tracker
 
 import com.tsarev.fiotcher.api.Stoppable
-import com.tsarev.fiotcher.api.TypedEvent
+import com.tsarev.fiotcher.api.TypedEvents
 import java.util.concurrent.Executor
 import java.util.concurrent.Flow
-import java.util.concurrent.ForkJoinPool
 
-/**
- * Useful typealias for typed event.
- */
-typealias TrackerEvent<WatchT> = TypedEvent<Collection<WatchT>>
-
-/**
- * Bunch of grouped [TrackerEvent]
- */
-data class TrackerEventBunch<WatchT : Any>(
-    val events: List<TrackerEvent<WatchT>>
-)
 
 /**
  * Resource tracker that is responsible for
@@ -39,7 +27,7 @@ abstract class Tracker<WatchT : Any> : Runnable, Stoppable {
     fun init(
         resourceBundle: WatchT,
         executor: Executor
-    ): Flow.Publisher<TrackerEventBunch<WatchT>> {
+    ): Flow.Publisher<TypedEvents<WatchT>> {
         // TODO Add idempotency support.
         this.resourceBundle = resourceBundle
         return doInit(executor)
@@ -50,6 +38,6 @@ abstract class Tracker<WatchT : Any> : Runnable, Stoppable {
      */
     abstract fun doInit(
         executor: Executor
-    ): Flow.Publisher<TrackerEventBunch<WatchT>>
+    ): Flow.Publisher<TypedEvents<WatchT>>
 
 }

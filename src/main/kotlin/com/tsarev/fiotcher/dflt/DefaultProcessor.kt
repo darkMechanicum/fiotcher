@@ -46,7 +46,7 @@ class DefaultProcessor<WatchT : Any>(
      */
     aggregatorMaxCapacity: Int = Flow.defaultBufferSize() shl 1,
 
-) : Processor<WatchT> {
+    ) : Processor<WatchT> {
 
     override val wayStation = DefaultWayStation(
         maxTransformerCapacity,

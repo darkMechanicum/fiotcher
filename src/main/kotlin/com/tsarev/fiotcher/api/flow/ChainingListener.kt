@@ -2,7 +2,6 @@ package com.tsarev.fiotcher.api.flow
 
 import com.tsarev.fiotcher.api.Stoppable
 import java.util.concurrent.Executor
-import java.util.concurrent.Flow
 
 /**
  * Marker interface, that can chain event processing within [WayStation] context.

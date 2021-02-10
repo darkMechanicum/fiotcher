@@ -1,6 +1,6 @@
 package com.tsarev.fiotcher.internals.tracker
 
-import com.tsarev.fiotcher.api.tracker.TrackerEventBunch
+import com.tsarev.fiotcher.api.TypedEvents
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.Test
@@ -24,13 +24,11 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = 0)
         val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<TrackerEventBunch<File>> {
-            override fun onNext(item: TrackerEventBunch<File>?) {
+        val subscriber = object : Flow.Subscriber<TypedEvents<File>> {
+            override fun onNext(item: TypedEvents<File>?) {
                 // extended pause because of [Thread.sleep(2000)] delays below.
                 testAsync.sendEvent("files changed")
-                item?.events
-                    ?.flatMap { bunch -> bunch.event.map { bunch.type to it } }
-                    ?.map { it.first to it.second.absolutePath }
+                item?.map { it.type to it.event.absolutePath }
                     ?.sortedBy { it.second }
                     ?.forEach { testAsync.sendEvent("file ${it.second} has been ${it.first}") }
             }
@@ -76,13 +74,11 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = 200)
         val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<TrackerEventBunch<File>> {
-            override fun onNext(item: TrackerEventBunch<File>?) {
+        val subscriber = object : Flow.Subscriber<TypedEvents<File>> {
+            override fun onNext(item: TypedEvents<File>?) {
                 // extended pause because of [Thread.sleep(2000)] delays below.
                 testAsync.sendEvent("files changed")
-                item?.events
-                    ?.flatMap { bunch -> bunch.event.map { bunch.type to it } }
-                    ?.map { it.first to it.second.absolutePath }
+                item?.map { it.type to it.event.absolutePath }
                     ?.sortedBy { it.second }
                     ?.forEach { testAsync.sendEvent("file ${it.second} has been ${it.first}") }
             }
@@ -125,13 +121,11 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = 0, recursive = true)
         val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<TrackerEventBunch<File>> {
-            override fun onNext(item: TrackerEventBunch<File>?) {
+        val subscriber = object : Flow.Subscriber<TypedEvents<File>> {
+            override fun onNext(item: TypedEvents<File>?) {
                 // extended pause because of [Thread.sleep(2000)] delays below.
                 testAsync.sendEvent("files changed")
-                item?.events
-                    ?.flatMap { bunch -> bunch.event.map { bunch.type to it } }
-                    ?.map { it.first to it.second.absolutePath }
+                item?.map { it.type to it.event.absolutePath }
                     ?.sortedBy { it.second }
                     ?.forEach { testAsync.sendEvent("file ${it.second} has been ${it.first}") }
             }
@@ -149,7 +143,7 @@ class FileSystemTrackerTest {
 
         // Test file in the nested directories creation.
         val someDir = tempDir.createDirectory("someDir")
-        // TODO This pause signalises that we also do manual registration of file changes and directory changes.
+        // TODO This pause signalises that we also must do manual registration of file changes and directory changes.
         Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.
         val someInnerDir = someDir.createDirectory("someDir")
         Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.
@@ -169,13 +163,11 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = 400, recursive = true)
         val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<TrackerEventBunch<File>> {
-            override fun onNext(item: TrackerEventBunch<File>?) {
+        val subscriber = object : Flow.Subscriber<TypedEvents<File>> {
+            override fun onNext(item: TypedEvents<File>?) {
                 // extended pause because of [Thread.sleep(2000)] delays below.
                 testAsync.sendEvent("files changed")
-                item?.events
-                    ?.flatMap { bunch -> bunch.event.map { bunch.type to it } }
-                    ?.map { it.first to it.second.absolutePath }
+                item?.map { it.type to it.event.absolutePath }
                     ?.sortedBy { it.second }
                     ?.forEach { testAsync.sendEvent("file ${it.second} has been ${it.first}") }
             }
@@ -215,13 +207,11 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = 400, recursive = true)
         val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<TrackerEventBunch<File>> {
-            override fun onNext(item: TrackerEventBunch<File>?) {
+        val subscriber = object : Flow.Subscriber<TypedEvents<File>> {
+            override fun onNext(item: TypedEvents<File>?) {
                 // extended pause because of [Thread.sleep(2000)] delays below.
                 testAsync.sendEvent("files changed")
-                item?.events
-                    ?.flatMap { bunch -> bunch.event.map { bunch.type to it } }
-                    ?.map { it.first to it.second.absolutePath }
+                item?.map { it.type to it.event.absolutePath }
                     ?.sortedBy { it.second }
                     ?.forEach { testAsync.sendEvent("file ${it.second} has been ${it.first}") }
             }

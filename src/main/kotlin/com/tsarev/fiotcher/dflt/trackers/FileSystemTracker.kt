@@ -1,9 +1,9 @@
 package com.tsarev.fiotcher.dflt.trackers
 
 import com.tsarev.fiotcher.api.EventType
+import com.tsarev.fiotcher.api.TypedEvents
 import com.tsarev.fiotcher.api.tracker.Tracker
-import com.tsarev.fiotcher.api.tracker.TrackerEvent
-import com.tsarev.fiotcher.api.tracker.TrackerEventBunch
+import com.tsarev.fiotcher.api.withType
 import com.tsarev.fiotcher.dflt.Brake
 import com.tsarev.fiotcher.dflt.push
 import java.io.File
@@ -81,7 +81,7 @@ class FileSystemTracker(
     /**
      * Create brand new publisher.
      */
-    private lateinit var publisher: SubmissionPublisher<TrackerEventBunch<File>>
+    private lateinit var publisher: SubmissionPublisher<TypedEvents<File>>
 
     override val isStopped get() = brake.get() != null
 
@@ -90,7 +90,7 @@ class FileSystemTracker(
      */
     override fun doInit(
         executor: Executor
-    ): Flow.Publisher<TrackerEventBunch<File>> {
+    ): Flow.Publisher<TypedEvents<File>> {
         if (!resourceBundle.isDirectory) throw IllegalArgumentException("$resourceBundle is not a directory!")
         publisher = SubmissionPublisher(executor, Flow.defaultBufferSize())
         registerRecursively(resourceBundle)
@@ -123,15 +123,13 @@ class FileSystemTracker(
                                 if (key == null) break
                                 allEntries.addNewEntries(processDirectoryEvent(key))
                             } catch (interrupted: InterruptedException) {
-                                doStopBrake() // Set to stop, but continue debounce.
+                                stop(false) // Set to stop, but continue debounce.
                             }
                         }
                         // Send event, if not empty.
                         if (allEntries.isNotEmpty()) {
-                            val groupedByType = allEntries.groupBy({ it.type }, { it.resource })
-                            val trackerEvents = groupedByType.keys
-                                .map { TrackerEvent(groupedByType[it]!!, it) }
-                            publisher.submit(TrackerEventBunch(trackerEvents))
+                            val events = allEntries.map { it.resource withType it.type }
+                            publisher.submit(events)
                         }
                     }
                 } catch (interrupted: InterruptedException) {

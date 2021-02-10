@@ -3,9 +3,9 @@ package com.tsarev.fiotcher.dflt
 import com.tsarev.fiotcher.api.ListenerAlreadyRegistered
 import com.tsarev.fiotcher.api.ListenerRegistryIsStopping
 import com.tsarev.fiotcher.api.Stoppable
+import com.tsarev.fiotcher.api.TypedEvents
 import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.api.tracker.ListenerRegistry
-import com.tsarev.fiotcher.api.tracker.TrackerEventBunch
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.ConcurrentHashMap
@@ -20,11 +20,11 @@ class DefaultListenerRegistry<WatchT : Any> : ListenerRegistry<WatchT>, Stoppabl
     /**
      * Registered listeners, by key.
      */
-    private val registeredListeners = ConcurrentHashMap<String, ChainingListener<TrackerEventBunch<WatchT>>>()
+    private val registeredListeners = ConcurrentHashMap<String, ChainingListener<TypedEvents<WatchT>>>()
 
     override fun registerListener(
-        listener: ChainingListener<TrackerEventBunch<WatchT>>, key: String
-    ): ChainingListener<TrackerEventBunch<WatchT>> {
+        listener: ChainingListener<TypedEvents<WatchT>>, key: String
+    ): ChainingListener<TypedEvents<WatchT>> {
         // Sync on the pool to handle stopping properly.
         synchronized(this) {
             checkIsStopping { ListenerRegistryIsStopping() }
@@ -61,7 +61,7 @@ class DefaultListenerRegistry<WatchT : Any> : ListenerRegistry<WatchT>, Stoppabl
     private fun doDeRegisterListener(
         key: String,
         force: Boolean,
-        listener: ChainingListener<TrackerEventBunch<WatchT>>
+        listener: ChainingListener<TypedEvents<WatchT>>
     ): CompletionStage<*> {
         val deRegistered = registeredListeners[key]
         return if (deRegistered != null && listener === deRegistered) {
@@ -81,9 +81,9 @@ class DefaultListenerRegistry<WatchT : Any> : ListenerRegistry<WatchT>, Stoppabl
      */
     private fun createListenerWrapper(
         key: String,
-        listener: ChainingListener<TrackerEventBunch<WatchT>>
-    ): ChainingListener<TrackerEventBunch<WatchT>> {
-        return object : ChainingListener<TrackerEventBunch<WatchT>> by listener {
+        listener: ChainingListener<TypedEvents<WatchT>>
+    ): ChainingListener<TypedEvents<WatchT>> {
+        return object : ChainingListener<TypedEvents<WatchT>> by listener {
             override val isStopped: Boolean
                 get() = this@DefaultListenerRegistry.isStopped || listener.isStopped
 

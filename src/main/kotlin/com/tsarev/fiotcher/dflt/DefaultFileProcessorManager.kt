@@ -1,10 +1,6 @@
 package com.tsarev.fiotcher.dflt
 
-import com.tsarev.fiotcher.api.EventType
-import com.tsarev.fiotcher.api.FileProcessorManager
-import com.tsarev.fiotcher.api.Processor
-import com.tsarev.fiotcher.api.Stoppable
-import com.tsarev.fiotcher.api.tracker.TrackerEventBunch
+import com.tsarev.fiotcher.api.*
 import com.tsarev.fiotcher.dflt.streams.NaiveFileStreamPool
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
 import org.w3c.dom.Document
@@ -48,9 +44,9 @@ class DefaultFileProcessorManager(
                     }
                 }
                 .syncChainFrom<File, InputStream> { naiveFileStreamPool.getInputStream(it) }
-                .asyncDelegateFrom<TrackerEventBunch<File>, File> { bunch, publisher ->
-                    val changedFiles = bunch.events.filter { it.type == EventType.CHANGED }.flatMap { it.event }
-                    changedFiles.forEach { publisher(it) }
+                .asyncDelegateFrom<TypedEvents<File>, File> { bunch, publisher ->
+                    val changedFiles = bunch.filter { it.type == EventType.CHANGED }
+                    changedFiles.forEach { publisher(it.event) }
                 }
         }
         processor.trackerListenerRegistry.registerListener(listener, key)
@@ -60,9 +56,9 @@ class DefaultFileProcessorManager(
     override fun handleFiles(key: String, fileListener: (File) -> Unit): Stoppable {
         val listener = with(processor.wayStation) {
             createCommonListener(fileListener)
-                .asyncDelegateFrom<TrackerEventBunch<File>, File> { bunch, publisher ->
-                    val changedFiles = bunch.events.filter { it.type == EventType.CHANGED }.flatMap { it.event }
-                    changedFiles.forEach { publisher(it) }
+                .asyncDelegateFrom<TypedEvents<File>, File> { bunch, publisher ->
+                    val changedFiles = bunch.filter { it.type == EventType.CHANGED }
+                    changedFiles.forEach { publisher(it.event) }
                 }
         }
         processor.trackerListenerRegistry.registerListener(listener, key)
@@ -73,9 +69,9 @@ class DefaultFileProcessorManager(
         val listener = with(processor.wayStation) {
             createCommonListener<InputStream> { saxParser.parse(it, saxListener) }
                 .syncChainFrom<File, InputStream> { naiveFileStreamPool.getInputStream(it) }
-                .asyncDelegateFrom<TrackerEventBunch<File>, File> { bunch, publisher ->
-                    val changedFiles = bunch.events.filter { it.type == EventType.CHANGED }.flatMap { it.event }
-                    changedFiles.forEach { publisher(it) }
+                .asyncDelegateFrom<TypedEvents<File>, File> { bunch, publisher ->
+                    val changedFiles = bunch.filter { it.type == EventType.CHANGED }
+                    changedFiles.forEach { publisher(it.event) }
                 }
         }
         processor.trackerListenerRegistry.registerListener(listener, key)
@@ -86,9 +82,9 @@ class DefaultFileProcessorManager(
         val listener = with(processor.wayStation) {
             createCommonListener<InputStream> { val document = domParser.parse(it); domListener(document) }
                 .syncChainFrom<File, InputStream> { naiveFileStreamPool.getInputStream(it) }
-                .asyncDelegateFrom<TrackerEventBunch<File>, File> { bunch, publisher ->
-                    val changedFiles = bunch.events.filter { it.type == EventType.CHANGED }.flatMap { it.event }
-                    changedFiles.forEach { publisher(it) }
+                .asyncDelegateFrom<TypedEvents<File>, File> { bunch, publisher ->
+                    val changedFiles = bunch.filter { it.type == EventType.CHANGED }
+                    changedFiles.forEach { publisher(it.event) }
                 }
         }
         processor.trackerListenerRegistry.registerListener(listener, key)

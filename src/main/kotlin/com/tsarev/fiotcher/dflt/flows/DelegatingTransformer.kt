@@ -16,7 +16,7 @@ class DelegatingTransformer<FromT : Any, ToT : Any, ListenerT>(
     private val onSubscribeHandler: (Flow.Subscription) -> Unit = {},
     private val transform: (FromT, (ToT) -> Unit) -> Unit,
 ) : SingleSubscriptionSubscriber<FromT>(), Flow.Processor<FromT, ToT>
-where ListenerT: ChainingListener<ToT>, ListenerT: Flow.Subscriber<ToT> {
+        where ListenerT : ChainingListener<ToT>, ListenerT : Flow.Subscriber<ToT> {
 
     private val destination = SubmissionPublisher<ToT>(executor, maxCapacity)
 

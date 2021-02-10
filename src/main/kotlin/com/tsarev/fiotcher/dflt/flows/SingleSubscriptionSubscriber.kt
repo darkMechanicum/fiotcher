@@ -104,7 +104,7 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> :
         transform = transformer
     )
 
-    class SyncDelegatedAdapter<ToT: Any, FromT : Any>(
+    class SyncDelegatedAdapter<ToT : Any, FromT : Any>(
         private val delegate: SingleSubscriptionSubscriber<ToT>,
         private val transformer: (FromT, (ToT) -> Unit) -> Unit
     ) : SingleSubscriptionSubscriber<FromT>() {

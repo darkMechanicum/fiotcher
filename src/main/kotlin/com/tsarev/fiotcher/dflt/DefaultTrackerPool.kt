@@ -42,8 +42,8 @@ class DefaultTrackerPool<WatchT : Any>(
         override val isStopped = true
         override fun stop(force: Boolean) = CompletableFuture.completedFuture(Unit)
         override fun run() = run { }
-        override fun doInit(executor: Executor) = object : Flow.Publisher<TrackerEventBunch<WatchT>> {
-            override fun subscribe(subscriber: Flow.Subscriber<in TrackerEventBunch<WatchT>>?) = run { }
+        override fun doInit(executor: Executor) = object : Flow.Publisher<TypedEvents<WatchT>> {
+            override fun subscribe(subscriber: Flow.Subscriber<in TypedEvents<WatchT>>?) = run { }
         }
     }
 

@@ -3,7 +3,6 @@ package com.tsarev.fiotcher.dflt.flows
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.Brake
 import java.util.concurrent.*
-import java.util.concurrent.atomic.AtomicReference
 
 /**
  * This is [Flow.Processor] that subscribes to lots of
