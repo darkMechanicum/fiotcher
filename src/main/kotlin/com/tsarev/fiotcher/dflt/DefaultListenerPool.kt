@@ -2,15 +2,15 @@ package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.*
 import com.tsarev.fiotcher.api.flow.ChainingListener
-import com.tsarev.fiotcher.api.pool.ListenerRegistry
+import com.tsarev.fiotcher.api.pool.ListenerPool
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Default [ListenerRegistry] implementation.
+ * Default [ListenerPool] implementation.
  */
-class DefaultListenerRegistry : ListenerRegistry, Stoppable {
+class DefaultListenerPool : ListenerPool, Stoppable {
 
     private val brake = Brake<Unit>()
 
@@ -84,10 +84,10 @@ class DefaultListenerRegistry : ListenerRegistry, Stoppable {
     ): ChainingListener<EventT> {
         return object : ChainingListener<EventT> by listener {
             override val isStopped: Boolean
-                get() = this@DefaultListenerRegistry.isStopped || listener.isStopped
+                get() = this@DefaultListenerPool.isStopped || listener.isStopped
 
             override fun stop(force: Boolean) =
-                if (!this@DefaultListenerRegistry.isStopped) doDeRegisterListener(key, force, listener)
+                if (!this@DefaultListenerPool.isStopped) doDeRegisterListener(key, force, listener)
                 else CompletableFuture.completedFuture(Unit)
         }
     }

@@ -8,7 +8,7 @@ import java.util.concurrent.CompletionStage
  * Listener registry used to synchronize [ChainingListener]
  * registration and de registration.
  */
-interface ListenerRegistry {
+interface ListenerPool {
 
     /**
      * Register listener.

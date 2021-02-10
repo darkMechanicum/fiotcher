@@ -67,6 +67,6 @@ class DefaultProcessor<WatchT : Any>(
         aggregatorPool
     )
 
-    override val trackerListenerRegistry = DefaultListenerRegistry()
+    override val trackerListenerPool = DefaultListenerPool()
 
 }

@@ -1,7 +1,7 @@
 package com.tsarev.fiotcher.api
 
 import com.tsarev.fiotcher.api.flow.WayStation
-import com.tsarev.fiotcher.api.pool.ListenerRegistry
+import com.tsarev.fiotcher.api.pool.ListenerPool
 import com.tsarev.fiotcher.api.pool.TrackerPool
 import com.tsarev.fiotcher.dflt.DefaultAggregatorPool
 
@@ -19,7 +19,7 @@ interface Processor<WatchT : Any> {
     /**
      * Tracker listeners, used by this processor.
      */
-    val trackerListenerRegistry: ListenerRegistry
+    val trackerListenerPool: ListenerPool
 
     /**
      * Grouping of intermediate processing.
