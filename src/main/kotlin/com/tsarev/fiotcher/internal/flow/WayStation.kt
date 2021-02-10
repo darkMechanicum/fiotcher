@@ -1,6 +1,6 @@
-package com.tsarev.fiotcher.api.flow
+package com.tsarev.fiotcher.internal.flow
 
-import com.tsarev.fiotcher.api.KClassTypedKey
+import com.tsarev.fiotcher.internal.KClassTypedKey
 
 /**
  * This is an intermediate point, where we may split, group and make asynchronous (or may not)

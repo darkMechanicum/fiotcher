@@ -1,6 +1,6 @@
 package com.tsarev.fiotcher.internals.tracker
 
-import com.tsarev.fiotcher.api.EventWithException
+import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.dflt.InitialEventsBunch
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
 import com.tsarev.fiotcher.util.*
@@ -62,8 +62,6 @@ class FileSystemTrackerTest {
         // Test deletion.
         someFile.delete()
         Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.
-        testAsync.assertEvent("files changed")
-        testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
 
         testAsync.assertNoEvent()
 
@@ -102,16 +100,14 @@ class FileSystemTrackerTest {
         val someFile = tempDir.createFile("someFile")
         Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.
         val someFile2 = tempDir.createFile("someFile2")
-        testAsync.assertEvent("files changed") // Higher timeout
+        testAsync.assertEvent("files changed")
         testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
         testAsync.assertEvent("file ${someFile2.absolutePath} has been changed")
 
         // Test deletion debouncing.
         someFile.appendText("some text")
         someFile.delete()
-        testAsync.assertEvent("files changed")
-        testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
-        testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
+        Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.
 
         testAsync.assertNoEvent()
 

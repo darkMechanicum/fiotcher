@@ -17,8 +17,8 @@ class ListenerIsStopped(message: String) : FiotcherException(message)
 /**
  * Exception to signal, that tracker listener has been already registered for some key.
  */
-class ListenerAlreadyRegistered(key: KClassTypedKey<*>) :
-    FiotcherException("Listener for key: $key has been already registered.")
+class ListenerAlreadyRegistered(key: String, type: Any) :
+    FiotcherException("Listener for key: $key and type: $type has been already registered.")
 
 /**
  * Exception to signal, that listener registry is stopping and can't register anything.

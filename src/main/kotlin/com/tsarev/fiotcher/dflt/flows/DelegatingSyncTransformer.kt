@@ -1,7 +1,7 @@
 package com.tsarev.fiotcher.dflt.flows
 
-import com.tsarev.fiotcher.api.EventWithException
 import com.tsarev.fiotcher.api.FiotcherException
+import com.tsarev.fiotcher.internal.EventWithException
 import java.util.concurrent.Flow
 
 class DelegatingSyncTransformer<ToT : Any, FromT : Any>(

@@ -1,7 +1,7 @@
 package com.tsarev.fiotcher.internals.flow
 
-import com.tsarev.fiotcher.api.EventWithException
-import com.tsarev.fiotcher.api.asSuccess
+import com.tsarev.fiotcher.internal.EventWithException
+import com.tsarev.fiotcher.internal.asSuccess
 import com.tsarev.fiotcher.dflt.flows.CommonListener
 import com.tsarev.fiotcher.dflt.flows.DelegatingAsyncTransformer
 import com.tsarev.fiotcher.util.*

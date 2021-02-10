@@ -1,11 +1,11 @@
 package com.tsarev.fiotcher.dflt.trackers
 
-import com.tsarev.fiotcher.api.EventWithException
-import com.tsarev.fiotcher.api.asSuccess
-import com.tsarev.fiotcher.api.pool.Tracker
 import com.tsarev.fiotcher.dflt.Brake
 import com.tsarev.fiotcher.dflt.InitialEventsBunch
 import com.tsarev.fiotcher.dflt.push
+import com.tsarev.fiotcher.internal.EventWithException
+import com.tsarev.fiotcher.internal.asSuccess
+import com.tsarev.fiotcher.internal.pool.Tracker
 import java.io.File
 import java.nio.file.*
 import java.time.Instant
@@ -132,7 +132,10 @@ class FileSystemTracker(
                             val events = allEntries
                                 .filter { it.type == EventType.CREATED || it.type == EventType.CHANGED }
                                 .map { it.resource }
-                            publisher.submit(InitialEventsBunch(events).asSuccess())
+
+                            if (events.isNotEmpty()) {
+                                publisher.submit(InitialEventsBunch(events).asSuccess())
+                            }
                         }
                     }
                 } catch (interrupted: InterruptedException) {
@@ -157,6 +160,7 @@ class FileSystemTracker(
         new.forEach {
             val deletedCopy = it.copy(type = EventType.DELETED)
             val createdCopy = it.copy(type = EventType.CREATED)
+            val changedCopy = it.copy(type = EventType.CHANGED)
             when (it.type) {
                 EventType.CHANGED -> if (!this.contains(deletedCopy)) this += it
                 EventType.CREATED -> if (this.contains(deletedCopy)) {
@@ -165,8 +169,9 @@ class FileSystemTracker(
                 } else {
                     this += createdCopy
                 }
-                EventType.DELETED -> if (this.contains(createdCopy)) {
+                EventType.DELETED -> if (this.contains(createdCopy) || this.contains(changedCopy)) {
                     this -= createdCopy
+                    this -= changedCopy
                     this += deletedCopy
                 } else {
                     this += deletedCopy

@@ -1,4 +1,4 @@
-package com.tsarev.fiotcher.api.flow
+package com.tsarev.fiotcher.internal.flow
 
 import com.tsarev.fiotcher.api.Stoppable
 import java.util.concurrent.Executor

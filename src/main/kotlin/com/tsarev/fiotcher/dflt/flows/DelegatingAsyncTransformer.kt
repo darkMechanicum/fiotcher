@@ -1,10 +1,10 @@
 package com.tsarev.fiotcher.dflt.flows
 
-import com.tsarev.fiotcher.api.EventWithException
 import com.tsarev.fiotcher.api.FiotcherException
-import com.tsarev.fiotcher.api.flow.ChainingListener
 import com.tsarev.fiotcher.dflt.Brake
 import com.tsarev.fiotcher.dflt.push
+import com.tsarev.fiotcher.internal.EventWithException
+import com.tsarev.fiotcher.internal.flow.ChainingListener
 import java.util.concurrent.*
 
 /**

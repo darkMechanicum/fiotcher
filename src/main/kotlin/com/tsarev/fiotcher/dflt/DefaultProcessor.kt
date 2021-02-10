@@ -1,9 +1,9 @@
 package com.tsarev.fiotcher.dflt
 
-import com.tsarev.fiotcher.api.Processor
-import com.tsarev.fiotcher.api.flow.WayStation
-import com.tsarev.fiotcher.api.pool.ListenerPool
-import com.tsarev.fiotcher.api.pool.TrackerPool
+import com.tsarev.fiotcher.internal.Processor
+import com.tsarev.fiotcher.internal.flow.WayStation
+import com.tsarev.fiotcher.internal.pool.ListenerPool
+import com.tsarev.fiotcher.internal.pool.TrackerPool
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.Flow

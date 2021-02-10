@@ -1,5 +1,6 @@
-package com.tsarev.fiotcher.api
+package com.tsarev.fiotcher.internal
 
+import com.tsarev.fiotcher.api.FiotcherException
 import kotlin.reflect.KClass
 
 data class EventWithException<EventT : Any>(
@@ -21,8 +22,8 @@ fun <T : Any> Throwable.asFailure() = EventWithException<T>(null, this)
  * Typed key to use in pools and registers.
  */
 data class KClassTypedKey<TypeT : Any>(
-    private val key: String,
-    private val klass: KClass<TypeT>
+    val key: String,
+    val klass: KClass<TypeT>
 )
 
 /**

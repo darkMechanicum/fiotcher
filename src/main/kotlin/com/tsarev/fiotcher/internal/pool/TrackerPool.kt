@@ -1,4 +1,4 @@
-package com.tsarev.fiotcher.api.pool
+package com.tsarev.fiotcher.internal.pool
 
 import com.tsarev.fiotcher.api.PoolIsStopping
 import com.tsarev.fiotcher.api.Stoppable

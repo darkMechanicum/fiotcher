@@ -1,8 +1,8 @@
-package com.tsarev.fiotcher.api.pool
+package com.tsarev.fiotcher.internal.pool
 
-import com.tsarev.fiotcher.api.EventWithException
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.InitialEventsBunch
+import com.tsarev.fiotcher.internal.EventWithException
 import java.util.concurrent.Executor
 import java.util.concurrent.Flow
 

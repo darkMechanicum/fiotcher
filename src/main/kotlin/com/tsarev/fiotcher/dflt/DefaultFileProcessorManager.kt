@@ -1,10 +1,10 @@
 package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.FileProcessorManager
-import com.tsarev.fiotcher.api.Processor
 import com.tsarev.fiotcher.api.Stoppable
-import com.tsarev.fiotcher.api.typedKey
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
+import com.tsarev.fiotcher.internal.Processor
+import com.tsarev.fiotcher.internal.typedKey
 import org.w3c.dom.Document
 import org.xml.sax.helpers.DefaultHandler
 import java.io.File

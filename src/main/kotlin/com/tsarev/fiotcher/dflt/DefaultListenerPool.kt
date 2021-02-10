@@ -1,10 +1,11 @@
 package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.*
-import com.tsarev.fiotcher.api.flow.ChainingListener
-import com.tsarev.fiotcher.api.pool.AggregatorPool
-import com.tsarev.fiotcher.api.pool.ListenerPool
 import com.tsarev.fiotcher.dflt.flows.SingleSubscriptionSubscriber
+import com.tsarev.fiotcher.internal.*
+import com.tsarev.fiotcher.internal.flow.ChainingListener
+import com.tsarev.fiotcher.internal.pool.AggregatorPool
+import com.tsarev.fiotcher.internal.pool.ListenerPool
 import java.util.concurrent.*
 
 /**
@@ -33,7 +34,7 @@ class DefaultListenerPool(
         // Sync on the pool to handle stopping properly.
         synchronized(this) {
             checkIsStopping { ListenerRegistryIsStopping() }
-            if (registeredListeners.putIfAbsent(key, listener) != null) throw ListenerAlreadyRegistered(key)
+            if (registeredListeners.putIfAbsent(key, listener) != null) throw ListenerAlreadyRegistered(key.key, key.klass)
             // If listener is [SingleSubscriptionSubscriber<*>] and [ChainingListener<EventT>]
             // so definitely it is also a [SingleSubscriptionSubscriber<EventT>]
             aggregatorPool.getAggregator(key).subscribe(listener as SingleSubscriptionSubscriber<EventT>)

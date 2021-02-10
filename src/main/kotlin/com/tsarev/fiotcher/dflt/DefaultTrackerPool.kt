@@ -1,7 +1,11 @@
 package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.*
-import com.tsarev.fiotcher.api.pool.*
+import com.tsarev.fiotcher.internal.EventWithException
+import com.tsarev.fiotcher.internal.pool.AggregatorPool
+import com.tsarev.fiotcher.internal.pool.Tracker
+import com.tsarev.fiotcher.internal.pool.TrackerPool
+import com.tsarev.fiotcher.internal.typedKey
 import java.util.concurrent.*
 
 /**

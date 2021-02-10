@@ -1,13 +1,13 @@
 package com.tsarev.fiotcher.dflt
 
-import com.tsarev.fiotcher.api.EventWithException
-import com.tsarev.fiotcher.api.KClassTypedKey
-import com.tsarev.fiotcher.api.flow.ChainingListener
-import com.tsarev.fiotcher.api.flow.WayStation
 import com.tsarev.fiotcher.dflt.flows.Aggregator
 import com.tsarev.fiotcher.dflt.flows.CommonListener
 import com.tsarev.fiotcher.dflt.flows.DelegatingAsyncTransformer
 import com.tsarev.fiotcher.dflt.flows.SingleSubscriptionSubscriber
+import com.tsarev.fiotcher.internal.EventWithException
+import com.tsarev.fiotcher.internal.KClassTypedKey
+import com.tsarev.fiotcher.internal.flow.ChainingListener
+import com.tsarev.fiotcher.internal.flow.WayStation
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Flow
 import java.util.concurrent.atomic.AtomicBoolean

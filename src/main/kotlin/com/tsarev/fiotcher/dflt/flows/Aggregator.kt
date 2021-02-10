@@ -1,8 +1,8 @@
 package com.tsarev.fiotcher.dflt.flows
 
-import com.tsarev.fiotcher.api.EventWithException
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.Brake
+import com.tsarev.fiotcher.internal.EventWithException
 import java.util.concurrent.*
 
 /**
