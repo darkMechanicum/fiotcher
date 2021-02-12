@@ -63,7 +63,7 @@ class DelegatingAsyncTransformer<FromT : Any, ToT : Any, ListenerT>(
 
     override fun doOnError(throwable: Throwable) {
         // Stop all chain from non recoverable error.
-        chained.stop()
+        chained.stop(true)
         chained.onError(throwable)
     }
 
@@ -81,6 +81,8 @@ class DelegatingAsyncTransformer<FromT : Any, ToT : Any, ListenerT>(
     override fun doOnSubscribe(subscription: Flow.Subscription) {
         onSubscribeHandler(subscription)
     }
+
+
 
     /**
      * Spin loop that all events are processed.

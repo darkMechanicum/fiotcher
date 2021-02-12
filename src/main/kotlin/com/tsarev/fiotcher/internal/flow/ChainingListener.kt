@@ -14,12 +14,12 @@ interface ChainingListener<ResourceT : Any> : Stoppable {
      * @transformer a function that accepts [FromT] event and function to publish it further,
      * thus allowing to make a number of publishing on its desire.
      */
-    fun <FromT : Any> doAsyncDelegateFrom(
+    fun <FromT : Any> WayStation.doAsyncDelegateFrom(
         executor: Executor,
         stoppingExecutor: Executor,
         maxCapacity: Int,
         transformer: (FromT, (ResourceT) -> Unit) -> Unit,
-        handleErrors: ((Throwable) -> Throwable)?,
+        handleErrors: ((Throwable) -> Throwable?)?,
     ): ChainingListener<FromT>
 
     /**
@@ -28,9 +28,9 @@ interface ChainingListener<ResourceT : Any> : Stoppable {
      * @transformer a function that accepts [FromT] event and function to publish it further,
      * thus allowing to make a number of publishing on its desire.
      */
-    fun <FromT : Any> doSyncDelegateFrom(
+    fun <FromT : Any> WayStation.doSyncDelegateFrom(
         transformer: (FromT, (ResourceT) -> Unit) -> Unit,
-        handleErrors: ((Throwable) -> Throwable)?,
+        handleErrors: ((Throwable) -> Throwable?)?,
     ): ChainingListener<FromT>
 
 }

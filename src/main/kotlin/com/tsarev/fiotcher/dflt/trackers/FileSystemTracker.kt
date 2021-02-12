@@ -1,7 +1,7 @@
 package com.tsarev.fiotcher.dflt.trackers
 
 import com.tsarev.fiotcher.dflt.Brake
-import com.tsarev.fiotcher.dflt.InitialEventsBunch
+import com.tsarev.fiotcher.api.InitialEventsBunch
 import com.tsarev.fiotcher.dflt.push
 import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.asSuccess

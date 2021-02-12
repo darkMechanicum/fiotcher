@@ -7,7 +7,7 @@ import java.util.concurrent.Flow
 class DelegatingSyncTransformer<ToT : Any, FromT : Any>(
     private val delegate: SingleSubscriptionSubscriber<ToT>,
     private val transform: (FromT, (ToT) -> Unit) -> Unit,
-    private val handleErrors: ((Throwable) -> Throwable)?,
+    private val handleErrors: ((Throwable) -> Throwable?)?,
 ) : SingleSubscriptionSubscriber<FromT>() {
 
     override fun onSubscribe(subscription: Flow.Subscription) = delegate.onSubscribe(subscription)

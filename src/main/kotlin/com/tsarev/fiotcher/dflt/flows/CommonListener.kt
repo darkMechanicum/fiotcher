@@ -9,7 +9,7 @@ import java.util.concurrent.Flow
 class CommonListener<ResourceT : Any>(
     private val onNextHandler: (ResourceT) -> Unit,
     private val onSubscribeHandler: (Flow.Subscription) -> Unit = {},
-    private val onErrorHandler: (Throwable) -> Unit = {}
+    private val onErrorHandler: (Throwable) -> Unit = { throw it },
 ) : SingleSubscriptionSubscriber<ResourceT>() {
 
     /**
@@ -29,7 +29,7 @@ class CommonListener<ResourceT : Any>(
         onSubscribeHandler(subscription)
     }
 
-    override fun onError(throwable: Throwable) {
+    override fun doOnError(throwable: Throwable) {
         onErrorHandler(throwable)
     }
 }

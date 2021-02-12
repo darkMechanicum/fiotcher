@@ -8,6 +8,7 @@ import com.tsarev.fiotcher.dflt.pushCompleted
 import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.asFailure
 import com.tsarev.fiotcher.internal.flow.ChainingListener
+import com.tsarev.fiotcher.internal.flow.WayStation
 import java.util.concurrent.Executor
 import java.util.concurrent.Flow
 
@@ -137,20 +138,20 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> :
         // no-op
     }
 
-    override fun <FromT : Any> doSyncDelegateFrom(
+    override fun <FromT : Any> WayStation.doSyncDelegateFrom(
         transformer: (FromT, (ResourceT) -> Unit) -> Unit,
-        handleErrors: ((Throwable) -> Throwable)?,
-    ) = DelegatingSyncTransformer(this, transformer, handleErrors)
+        handleErrors: ((Throwable) -> Throwable?)?,
+    ) = DelegatingSyncTransformer(this@SingleSubscriptionSubscriber, transformer, handleErrors)
 
-    override fun <FromT : Any> doAsyncDelegateFrom(
+    override fun <FromT : Any> WayStation.doAsyncDelegateFrom(
         executor: Executor,
         stoppingExecutor: Executor,
         maxCapacity: Int,
         transformer: (FromT, (ResourceT) -> Unit) -> Unit,
-        handleErrors: ((Throwable) -> Throwable)?,
+        handleErrors: ((Throwable) -> Throwable?)?,
     ): ChainingListener<FromT> = DelegatingAsyncTransformer(
         executor = executor,
-        chained = this,
+        chained = this@SingleSubscriptionSubscriber,
         maxCapacity = maxCapacity,
         stoppingExecutor = stoppingExecutor,
         transform = transformer,

@@ -1,88 +1,129 @@
 package com.tsarev.fiotcher.dflt
 
-import com.tsarev.fiotcher.api.FileProcessorManager
-import com.tsarev.fiotcher.api.Stoppable
+import com.tsarev.fiotcher.api.*
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
 import com.tsarev.fiotcher.internal.Processor
-import com.tsarev.fiotcher.internal.typedKey
-import org.w3c.dom.Document
-import org.xml.sax.helpers.DefaultHandler
+import com.tsarev.fiotcher.internal.flow.ChainingListener
+import com.tsarev.fiotcher.internal.flow.WayStation
 import java.io.File
-import java.io.FileInputStream
-import java.io.IOException
-import java.io.InputStream
-import java.util.*
 import java.util.concurrent.CompletionStage
-import javax.xml.parsers.DocumentBuilderFactory
-import javax.xml.parsers.SAXParserFactory
+import kotlin.reflect.KClass
 
 class DefaultFileProcessorManager(
     override val processor: Processor<File>
 ) : FileProcessorManager {
 
-    val saxParser = SAXParserFactory.newInstance().newSAXParser()
-
-    val domParser = DocumentBuilderFactory.newInstance().newDocumentBuilder()
-
-    override fun startTracking(path: File, key: String, recursively: Boolean): CompletionStage<out Stoppable> {
+    override fun startTrackingFile(path: File, key: String, recursively: Boolean): CompletionStage<out Stoppable> {
         val fileSystemTracker = FileSystemTracker(recursive = recursively)
         return processor.startTracker(path, fileSystemTracker, key)
     }
 
-    override fun stopTracking(path: File, key: String, force: Boolean): CompletionStage<*> {
-        return processor.stopTracker(path, key, force)
+    override fun stopTracking(resource: File, key: String, force: Boolean): CompletionStage<*> {
+        return processor.stopTracker(resource, key, force)
     }
 
-    override fun handleLines(key: String, linedListener: (String) -> Unit): Stoppable {
-        val listener = with(processor) {
-            createCommonListener(listener = linedListener)
-                .syncSplitFrom<InputStream, String> { stream ->
-                    mutableListOf<String>().also { list ->
-                        with(Scanner(stream)) {
-                            while (hasNextLine()) list += nextLine()
-                        }
-                    }
-                }
-                .syncChainFrom<File, InputStream> { getStreamOrNull(it) }
-                .asyncDelegateFrom<InitialEventsBunch<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
+    override fun listenForInitial(key: String): ProcessorManager.ListenerBuilder<InitialEventsBunch<File>> {
+        return ListenerBuilderInitial(key.typedKey())
+    }
+
+    override fun <EventT : ProcessorManager.EventMarker> listenForKey(
+        key: String,
+        type: KClass<EventT>
+    ): ProcessorManager.ListenerBuilder<EventT> {
+        return ListenerBuilderInitial(key.typedKey(type))
+    }
+
+    abstract inner class DefaultListenerBuilderBase<InitialT : Any, EventT : Any, PreviousT : Any>(
+      private val key: KClassTypedKey<InitialT>
+    ) : ProcessorManager.ListenerBuilder<EventT> {
+
+        override fun <NextT : Any> chain(
+            handleErrors: ((Throwable) -> Throwable?)?,
+            async: Boolean,
+            transformer: (EventT) -> NextT?
+        ) = ListenerBuilderIntermediate<InitialT, NextT, EventT>(
+            key, this
+        ) {
+            if (async) {
+                it.asyncChainFrom(transformer = transformer, handleErrors = handleErrors)
+            } else {
+                it.syncChainFrom(transformer = transformer, handleErrors = handleErrors)
+            }
         }
-        processor.registerListener(listener, key.typedKey())
-        return listener
-    }
 
-    override fun handleFiles(key: String, fileListener: (File) -> Unit): Stoppable {
-        val listener = with(processor) {
-            createCommonListener(listener = fileListener)
-                .asyncDelegateFrom<InitialEventsBunch<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
+        override fun <NextT : Any> split(
+            handleErrors: ((Throwable) -> Throwable?)?,
+            async: Boolean,
+            transformer: (EventT) -> Collection<NextT?>?
+        ) = ListenerBuilderIntermediate<InitialT, NextT, EventT>(
+            key, this
+        ) {
+            if (async) {
+                it.asyncSplitFrom(transformer = transformer, handleErrors = handleErrors)
+            } else {
+                it.syncSplitFrom(transformer = transformer, handleErrors = handleErrors)
+            }
         }
-        processor.registerListener(listener, key.typedKey())
-        return listener
-    }
 
-    override fun handleSax(key: String, saxListener: DefaultHandler): Stoppable {
-        val listener = with(processor) {
-            createCommonListener<InputStream> { saxParser.parse(it, saxListener) }
-                .syncChainFrom<File, InputStream> { getStreamOrNull(it) }
-                .asyncDelegateFrom<InitialEventsBunch<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
+        override fun <NextT : Any> delegate(
+            handleErrors: ((Throwable) -> Throwable?)?,
+            async: Boolean,
+            transformer: (EventT, (NextT) -> Unit) -> Unit
+        ) = ListenerBuilderIntermediate<InitialT, NextT, EventT>(
+            key, this
+        ) {
+            if (async) {
+                it.asyncDelegateFrom(transformer = transformer, handleErrors = handleErrors)
+            } else {
+                it.syncDelegateFrom(transformer = transformer, handleErrors = handleErrors)
+            }
         }
-        processor.registerListener(listener, key.typedKey())
-        return listener
-    }
 
-    override fun handleDom(key: String, domListener: (Document) -> Unit): Stoppable {
-        val listener = with(processor) {
-            createCommonListener<InputStream> { val document = domParser.parse(it); domListener(document) }
-                .syncChainFrom<File, InputStream> { getStreamOrNull(it) }
-                .asyncDelegateFrom<InitialEventsBunch<File>, File> { bunch, publisher -> bunch.forEach { publisher(it) } }
+        override fun startListening(
+            async: Boolean,
+            handleErrors: ((Throwable) -> Throwable?)?,
+            listener: (EventT) -> Unit
+        ): Stoppable {
+            val lastListener = processor.createCommonListener(
+                listener = listener,
+                handleErrors = handleErrors
+            )
+            val initialListener = chain(lastListener)
+            processor.registerListener(initialListener, key)
+            return initialListener
         }
-        processor.registerListener(listener, key.typedKey())
-        return listener
+
+        override fun doAggregate(
+            handleErrors: ((Throwable) -> Throwable?)?,
+            key: KClassTypedKey<EventT>
+        ) {
+            val lastListener = processor.doAggregate(
+                key = key,
+                handleErrors = handleErrors
+            )
+            val initialListener = chain(lastListener)
+            processor.registerListener(initialListener, this.key)
+        }
+
+        abstract fun chain(current: ChainingListener<EventT>): ChainingListener<InitialT>
+
     }
 
-    private fun getStreamOrNull(file: File) = try {
-        FileInputStream(file)
-    } catch (cause: IOException) {
-        null
+    inner class ListenerBuilderInitial<InitialT : Any>(
+        key: KClassTypedKey<InitialT>
+    ) : DefaultListenerBuilderBase<InitialT, InitialT, Unit>(key) {
+        override fun chain(current: ChainingListener<InitialT>) = current
+    }
+
+    inner class ListenerBuilderIntermediate<InitialT : Any, EventT : Any, PreviousT : Any>(
+        key: KClassTypedKey<InitialT>,
+        private val prev: DefaultListenerBuilderBase<InitialT, PreviousT, *>,
+        private val chainer: (WayStation.(ChainingListener<EventT>) -> ChainingListener<PreviousT>),
+    ) : DefaultListenerBuilderBase<InitialT, EventT, PreviousT>(key) {
+        override fun chain(current: ChainingListener<EventT>): ChainingListener<InitialT> {
+            val previous = processor.chainer(current)
+            return prev.chain(previous)
+        }
     }
 
 }

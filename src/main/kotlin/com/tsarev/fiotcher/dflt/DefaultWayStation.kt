@@ -5,7 +5,7 @@ import com.tsarev.fiotcher.dflt.flows.CommonListener
 import com.tsarev.fiotcher.dflt.flows.DelegatingAsyncTransformer
 import com.tsarev.fiotcher.dflt.flows.SingleSubscriptionSubscriber
 import com.tsarev.fiotcher.internal.EventWithException
-import com.tsarev.fiotcher.internal.KClassTypedKey
+import com.tsarev.fiotcher.api.KClassTypedKey
 import com.tsarev.fiotcher.internal.flow.ChainingListener
 import com.tsarev.fiotcher.internal.flow.WayStation
 import java.util.concurrent.ExecutorService
@@ -41,12 +41,22 @@ class DefaultWayStation(
 ) : WayStation {
 
     override fun <ResourceT : Any> createCommonListener(
-        handleErrors: ((Throwable) -> Throwable)?,
-        listener: (ResourceT) -> Unit,
-    ) = CommonListener(listener)
+        handleErrors: ((Throwable) -> Throwable?)?,
+        listener: (ResourceT) -> Unit
+    ) = CommonListener(onNextHandler = listener, onErrorHandler = {
+        // Aggressive error handling on end listener.
+        if (handleErrors != null) {
+            val transformed = handleErrors(it)
+            if (transformed != null) {
+                throw transformed
+            }
+        } else {
+            throw it
+        }
+    })
 
     override fun <ResourceT : Any> doAggregate(
-        handleErrors: ((Throwable) -> Throwable)?,
+        handleErrors: ((Throwable) -> Throwable?)?,
         key: KClassTypedKey<ResourceT>,
     ): ChainingListener<ResourceT> {
         val aggregator = aggregatorPool.getAggregator(key)
@@ -56,12 +66,12 @@ class DefaultWayStation(
     }
 
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncChainFrom(
-        handleErrors: ((Throwable) -> Throwable)?,
+        handleErrors: ((Throwable) -> Throwable?)?,
         transformer: (FromT) -> ToT?,
     ) = syncSplitFrom<FromT, ToT>(handleErrors) { event -> listOf(transformer(event)) }
 
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncSplitFrom(
-        handleErrors: ((Throwable) -> Throwable)?,
+        handleErrors: ((Throwable) -> Throwable?)?,
         transformer: (FromT) -> Collection<ToT?>?,
     ) = syncDelegateFrom<FromT, ToT>(handleErrors) { event, publisher ->
         val split = transformer(event)
@@ -69,17 +79,17 @@ class DefaultWayStation(
     }
 
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.syncDelegateFrom(
-        handleErrors: ((Throwable) -> Throwable)?,
+        handleErrors: ((Throwable) -> Throwable?)?,
         transformer: (FromT, (ToT) -> Unit) -> Unit,
-    ) = this.doSyncDelegateFrom(transformer, handleErrors)
+    ) = doSyncDelegateFrom(transformer, handleErrors)
 
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncChainFrom(
-        handleErrors: ((Throwable) -> Throwable)?,
+        handleErrors: ((Throwable) -> Throwable?)?,
         transformer: (FromT) -> ToT?,
     ) = asyncSplitFrom<FromT, ToT>(handleErrors) { listOf(transformer(it)) }
 
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncSplitFrom(
-        handleErrors: ((Throwable) -> Throwable)?,
+        handleErrors: ((Throwable) -> Throwable?)?,
         transformer: (FromT) -> Collection<ToT?>?,
     ) = asyncDelegateFrom<FromT, ToT>(handleErrors) { event, publisher ->
         val split = transformer(event)
@@ -87,7 +97,7 @@ class DefaultWayStation(
     }
 
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncDelegateFrom(
-        handleErrors: ((Throwable) -> Throwable)?,
+        handleErrors: ((Throwable) -> Throwable?)?,
         transformer: (FromT, (ToT) -> Unit) -> Unit,
     ) = doAsyncDelegateFrom(
         executor = transformerExecutorService,

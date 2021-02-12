@@ -5,7 +5,6 @@ import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.pool.AggregatorPool
 import com.tsarev.fiotcher.internal.pool.Tracker
 import com.tsarev.fiotcher.internal.pool.TrackerPool
-import com.tsarev.fiotcher.internal.typedKey
 import java.util.concurrent.*
 
 /**

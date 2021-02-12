@@ -1,6 +1,6 @@
 package com.tsarev.fiotcher.internal.pool
 
-import com.tsarev.fiotcher.internal.KClassTypedKey
+import com.tsarev.fiotcher.api.KClassTypedKey
 import com.tsarev.fiotcher.internal.flow.ChainingListener
 import java.util.concurrent.CompletionStage
 

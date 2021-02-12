@@ -1,4 +1,4 @@
-package com.tsarev.fiotcher.dflt
+package com.tsarev.fiotcher.api
 
 /**
  * Special class to generate unique [KClassTypedKey]
