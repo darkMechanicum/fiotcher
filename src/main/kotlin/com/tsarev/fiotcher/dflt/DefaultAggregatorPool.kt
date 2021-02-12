@@ -2,7 +2,7 @@ package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.FiotcherException
 import com.tsarev.fiotcher.api.KClassTypedKey
-import com.tsarev.fiotcher.api.PoolIsStopping
+import com.tsarev.fiotcher.api.PoolIsStopped
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.flows.Aggregator
 import com.tsarev.fiotcher.internal.pool.AggregatorPool
@@ -38,7 +38,7 @@ class DefaultAggregatorPool(
     override fun <EventT : Any> getAggregator(key: KClassTypedKey<EventT>): Aggregator<EventT> {
         // Sync on the pool to handle stopping properly.
         synchronized(this) {
-            checkIsStopping { PoolIsStopping() }
+            checkIsStopping { PoolIsStopped() }
             val result = aggregators.computeIfAbsent(key) {
                 Aggregator<EventT>(queueExecutorService, aggregatorMaxCapacity)
             }

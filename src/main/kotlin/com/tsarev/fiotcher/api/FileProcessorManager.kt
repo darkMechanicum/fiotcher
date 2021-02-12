@@ -16,7 +16,7 @@ interface FileProcessorManager : ProcessorManager<File> {
      * @param recursively whether to track specified directory recursively
      * @throws IllegalArgumentException when passed path is not a directory
      * @throws TrackerAlreadyRegistered if tracker is already registered on same [path] with the same [key]
-     * @throws PoolIsStopping if underlying tracker pool is stopping
+     * @throws PoolIsStopped if underlying tracker pool is stopping
      * @return a future handle, that will return [Stoppable] - a handle to registered tracker, when registration completes.
      * Invoking that [Stoppable] is equivalent of [stopTracking] with same parameters as passed to [startTrackingFile]
      */

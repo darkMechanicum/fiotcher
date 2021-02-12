@@ -33,7 +33,7 @@ class DefaultListenerPool(
             throw FiotcherException("Can't use listeners, other that are created by [DefaultWayStation]")
         // Sync on the pool to handle stopping properly.
         synchronized(this) {
-            checkIsStopping { ListenerRegistryIsStopping() }
+            checkIsStopping { PoolIsStopped() }
             if (registeredListeners.putIfAbsent(key, listener) != null) throw ListenerAlreadyRegistered(
                 key.key,
                 key.klass
@@ -47,7 +47,7 @@ class DefaultListenerPool(
 
 
     override fun deRegisterListener(key: KClassTypedKey<*>, force: Boolean): CompletionStage<*> {
-        checkIsStopping { ListenerRegistryIsStopping() }
+        checkIsStopping { PoolIsStopped() }
         // Check if we need to de register anything.
         val deRegistered = registeredListeners[key]
         return if (deRegistered != null) doDeRegisterListener(

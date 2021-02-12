@@ -1,6 +1,6 @@
 package com.tsarev.fiotcher.internals.flow
 
-import com.tsarev.fiotcher.api.ListenerIsStopped
+import com.tsarev.fiotcher.api.PoolIsStopped
 import com.tsarev.fiotcher.dflt.flows.CommonListener
 import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.asSuccess
@@ -75,8 +75,8 @@ class CommonListenerTest {
         // Test.
         listener.stop()
         publisher.subscribe(listener)
-        testSync.assertEvent<ListenerIsStopped> {
-            Assertions.assertEquals("Cannot subscribe when stopped.", it.message)
+        testSync.assertEvent<PoolIsStopped> {
+            Assertions.assertEquals("Cannot subscribe because tracker pool is stopped", it.message)
         }
         testSync.assertNoEvent()
     }

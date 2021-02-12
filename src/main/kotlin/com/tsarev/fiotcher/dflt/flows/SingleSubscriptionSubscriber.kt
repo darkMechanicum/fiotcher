@@ -1,7 +1,7 @@
 package com.tsarev.fiotcher.dflt.flows
 
 import com.tsarev.fiotcher.api.FiotcherException
-import com.tsarev.fiotcher.api.ListenerIsStopped
+import com.tsarev.fiotcher.api.PoolIsStopped
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.Brake
 import com.tsarev.fiotcher.dflt.pushCompleted
@@ -51,8 +51,8 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> :
      * Request maximum of entries and store subscription.
      */
     override fun onSubscribe(subscription: Flow.Subscription) {
-        if (isStopped) throw ListenerIsStopped("Cannot subscribe when stopped.")
-        if (_subscription != null) throw ListenerIsStopped("Cannot subscribe to multiple publishers.")
+        if (isStopped) throw PoolIsStopped("Cannot subscribe")
+        if (_subscription != null) throw FiotcherException("Cannot subscribe to multiple publishers.")
         _subscription = subscription
         subscription.request(1) // Ask for single element.
         doOnSubscribe(subscription)

@@ -1,6 +1,6 @@
 package com.tsarev.fiotcher.internal.pool
 
-import com.tsarev.fiotcher.api.PoolIsStopping
+import com.tsarev.fiotcher.api.PoolIsStopped
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.api.TrackerAlreadyRegistered
 import java.util.concurrent.CompletionStage
@@ -28,7 +28,7 @@ interface TrackerPool<WatchT : Any> : Stoppable {
      * @param key type, with which tracker was registered
      * @param tracker tracker to register
      * @throws TrackerAlreadyRegistered if tacker is already registered within [resourceBundle] and [key]
-     * @throws PoolIsStopping when the pool is stopping
+     * @throws PoolIsStopped when the pool is stopping
      * @return a asynchronous handle to tracker shutdown hook
      */
     fun startTracker(
@@ -46,7 +46,7 @@ interface TrackerPool<WatchT : Any> : Stoppable {
      * @param resourceBundle bundle, for which tracker was registered
      * @param key type, with which tracker was registered
      * @param force try to force tracker resource shutdown, thus ignoring pending resource events
-     * @throws PoolIsStopping when the pool is stopping
+     * @throws PoolIsStopped when the pool is stopping
      * @return a asynchronous handle to tracker stopping process
      */
     fun stopTracker(
