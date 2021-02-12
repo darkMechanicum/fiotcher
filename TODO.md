@@ -7,10 +7,11 @@ _Done:_
 1. Remove types from events (for now, there isn't much use of them )
 1. Builder high level API instead of manager
 1. Builder API implementation
+1. Tests for DefaultAggregatorPool
+1. Tests for DefaultListenerPool
 
 _Not done:_
-1. Tests for DefaultAggregatorPool
-1. Tests for DefaultListenerRegistry
+
 1. Tests for DefaultTrackerPool
 1. Tests for DefaultWayStation
 1. Tests for DefaultProcessor
