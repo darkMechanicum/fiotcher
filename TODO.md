@@ -5,10 +5,10 @@ _Done:_
 1. Error passing API
 1. Error passing implementation
 1. Remove types from events (for now, there isn't much use of them )
-
-_Not done:_
 1. Builder high level API instead of manager
 1. Builder API implementation
+
+_Not done:_
 1. Tests for DefaultAggregatorPool
 1. Tests for DefaultListenerRegistry
 1. Tests for DefaultTrackerPool

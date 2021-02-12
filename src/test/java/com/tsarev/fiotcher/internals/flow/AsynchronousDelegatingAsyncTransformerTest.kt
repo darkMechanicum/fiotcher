@@ -1,9 +1,9 @@
 package com.tsarev.fiotcher.internals.flow
 
-import com.tsarev.fiotcher.internal.EventWithException
-import com.tsarev.fiotcher.internal.asSuccess
 import com.tsarev.fiotcher.dflt.flows.CommonListener
 import com.tsarev.fiotcher.dflt.flows.DelegatingAsyncTransformer
+import com.tsarev.fiotcher.internal.EventWithException
+import com.tsarev.fiotcher.internal.asSuccess
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions

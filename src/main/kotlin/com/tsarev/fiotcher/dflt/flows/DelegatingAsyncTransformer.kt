@@ -83,7 +83,6 @@ class DelegatingAsyncTransformer<FromT : Any, ToT : Any, ListenerT>(
     }
 
 
-
     /**
      * Spin loop that all events are processed.
      */

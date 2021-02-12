@@ -34,7 +34,7 @@ class DefaultFileProcessorManager(
     }
 
     abstract inner class DefaultListenerBuilderBase<InitialT : Any, EventT : Any, PreviousT : Any>(
-      private val key: KClassTypedKey<InitialT>
+        private val key: KClassTypedKey<InitialT>
     ) : ProcessorManager.ListenerBuilder<EventT> {
 
         override fun <NextT : Any> chain(

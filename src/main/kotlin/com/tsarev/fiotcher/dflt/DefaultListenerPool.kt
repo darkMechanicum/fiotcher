@@ -34,7 +34,10 @@ class DefaultListenerPool(
         // Sync on the pool to handle stopping properly.
         synchronized(this) {
             checkIsStopping { ListenerRegistryIsStopping() }
-            if (registeredListeners.putIfAbsent(key, listener) != null) throw ListenerAlreadyRegistered(key.key, key.klass)
+            if (registeredListeners.putIfAbsent(key, listener) != null) throw ListenerAlreadyRegistered(
+                key.key,
+                key.klass
+            )
             // If listener is [SingleSubscriptionSubscriber<*>] and [ChainingListener<EventT>]
             // so definitely it is also a [SingleSubscriptionSubscriber<EventT>]
             aggregatorPool.getAggregator(key).subscribe(listener as SingleSubscriptionSubscriber<EventT>)

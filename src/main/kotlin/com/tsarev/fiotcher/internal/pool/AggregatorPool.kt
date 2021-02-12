@@ -1,7 +1,7 @@
 package com.tsarev.fiotcher.internal.pool
 
-import com.tsarev.fiotcher.dflt.flows.Aggregator
 import com.tsarev.fiotcher.api.KClassTypedKey
+import com.tsarev.fiotcher.dflt.flows.Aggregator
 
 /**
  * Pool, used to synchronize aggregator access.

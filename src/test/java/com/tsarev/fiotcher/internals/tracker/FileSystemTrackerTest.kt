@@ -1,8 +1,8 @@
 package com.tsarev.fiotcher.internals.tracker
 
-import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.api.InitialEventsBunch
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
+import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir

@@ -1,10 +1,10 @@
 package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.FiotcherException
+import com.tsarev.fiotcher.api.KClassTypedKey
 import com.tsarev.fiotcher.api.PoolIsStopping
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.flows.Aggregator
-import com.tsarev.fiotcher.api.KClassTypedKey
 import com.tsarev.fiotcher.internal.pool.AggregatorPool
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
