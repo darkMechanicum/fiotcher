@@ -19,6 +19,7 @@ import java.util.concurrent.*
  */
 class Aggregator<ResourceT : Any>(
     executor: Executor = ForkJoinPool.commonPool(),
+    private val stoppingExecutor: Executor = ForkJoinPool.commonPool(),
     maxCapacity: Int = Flow.defaultBufferSize(),
     private val onSubscribeHandler: (Flow.Subscription) -> Unit = { }
 ) : Flow.Processor<EventWithException<ResourceT>, EventWithException<ResourceT>>, Stoppable {
@@ -57,7 +58,22 @@ class Aggregator<ResourceT : Any>(
             copy = subscriptions.toList()
             subscriptions.clear()
         }
-        copy.forEach { it.cancel() }
+        if (force) {
+            CompletableFuture.runAsync({
+                copy.forEach {
+                    try {
+                        it.cancel()
+                    } catch (cause: Throwable) { /* ignore when forcing */
+                    }
+                }
+            }, stoppingExecutor)
+            brake.get()!!.complete(Unit)
+        } else {
+            CompletableFuture.runAsync({
+                copy.forEach { it.cancel() }
+                brake.get()!!.complete(Unit)
+            }, stoppingExecutor)
+        }
         return brake.get()!!
     }
 

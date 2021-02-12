@@ -19,14 +19,14 @@ class SynchronousDelegatingAsyncTransformerTest {
 
     @Test
     fun `send two events`() {
-        // Prepare.
+        // --- Prepare ---
         val chained = CommonListener<String>(
             { testSync.sendEvent("chained $it") },
             { testSync.sendEvent("chained subscribed") }
         )
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 10)
 
-        // Test.
+        // --- Test ---
         val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
             executor = callerThreadTestExecutor,
             maxCapacity = 10,
@@ -50,14 +50,14 @@ class SynchronousDelegatingAsyncTransformerTest {
 
     @Test
     fun `synchronous force stop after one submit`() {
-        // Prepare.
+        // --- Prepare ---
         val chained = CommonListener<String>(
             { testSync.sendEvent("chained $it") },
             { testSync.sendEvent("chained subscribed") }
         )
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 10)
 
-        // Test.
+        // --- Test ---
         val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
             executor = callerThreadTestExecutor,
             maxCapacity = 10,
@@ -80,14 +80,14 @@ class SynchronousDelegatingAsyncTransformerTest {
 
     @Test
     fun `synchronous force stop before submit`() {
-        // Prepare.
+        // --- Prepare ---
         val chained = CommonListener<String>(
             { testSync.sendEvent("chained $it") },
             { testSync.sendEvent("chained subscribed") }
         )
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 10)
 
-        // Test.
+        // --- Test ---
         val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
             executor = callerThreadTestExecutor,
             maxCapacity = 10,
@@ -108,14 +108,14 @@ class SynchronousDelegatingAsyncTransformerTest {
 
     @Test
     fun `synchronous force stop before subscribe`() {
-        // Prepare.
+        // --- Prepare ---
         val chained = CommonListener<String>(
             onNextHandler = { },
             onErrorHandler = { testSync.sendEvent(it) }
         )
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 10)
 
-        // Test.
+        // --- Test ---
         val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
             executor = callerThreadTestExecutor,
             maxCapacity = 10,

@@ -18,11 +18,11 @@ class CommonListenerTest {
 
     @Test
     fun `send two events`() {
-        // Prepare.
+        // --- Prepare ---
         val listener = CommonListener<String>({ testSync.sendEvent(it) }, { testSync.sendEvent("subscribed") })
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
 
-        // Test.
+        // --- Test ---
         publisher.subscribe(listener)
         testSync.assertEvent("subscribed")
         publisher.submit("one".asSuccess())
@@ -34,11 +34,11 @@ class CommonListenerTest {
 
     @Test
     fun `stop after one submit`() {
-        // Prepare.
+        // --- Prepare ---
         val listener = CommonListener<String>({ testSync.sendEvent(it) }, { testSync.sendEvent("subscribed") })
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
 
-        // Test.
+        // --- Test ---
         publisher.subscribe(listener)
         testSync.assertEvent("subscribed")
         publisher.submit("one".asSuccess())
@@ -50,11 +50,11 @@ class CommonListenerTest {
 
     @Test
     fun `stop before submit`() {
-        // Prepare.
+        // --- Prepare ---
         val listener = CommonListener<String>({ testSync.sendEvent(it) }, { testSync.sendEvent("subscribed") })
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
 
-        // Test.
+        // --- Test ---
         publisher.subscribe(listener)
         testSync.assertEvent("subscribed")
         listener.stop()
@@ -65,14 +65,14 @@ class CommonListenerTest {
 
     @Test
     fun `stop before subscribe`() {
-        // Prepare.
+        // --- Prepare ---
         val listener = CommonListener<String>(
             onNextHandler = { },
             onErrorHandler = { testSync.sendEvent(it) }
         )
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
 
-        // Test.
+        // --- Test ---
         listener.stop()
         publisher.subscribe(listener)
         testSync.assertEvent<PoolIsStopped> {

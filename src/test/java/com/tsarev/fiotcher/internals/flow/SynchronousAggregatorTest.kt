@@ -22,6 +22,7 @@ class SynchronousAggregatorTest {
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 10)
         val aggregator = Aggregator<String>(
             callerThreadTestExecutor,
+            callerThreadTestExecutor,
             10,
             { testSync.sendEvent("aggregator subscribed") }
         )
@@ -63,6 +64,7 @@ class SynchronousAggregatorTest {
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 10)
         val aggregator = Aggregator<String>(
             callerThreadTestExecutor,
+            callerThreadTestExecutor,
             10,
             { testSync.sendEvent("aggregator subscribed") }
         )
@@ -95,6 +97,7 @@ class SynchronousAggregatorTest {
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 10)
         val aggregator = Aggregator<String>(
             callerThreadTestExecutor,
+            callerThreadTestExecutor,
             10,
             { testSync.sendEvent("aggregator subscribed") }
         )
@@ -123,6 +126,7 @@ class SynchronousAggregatorTest {
         // --- Prepare ---
         val aggregator = Aggregator<String>(
             callerThreadTestExecutor,
+            callerThreadTestExecutor,
             10,
             { testSync.sendEvent("aggregator subscribed") }
         )
@@ -138,6 +142,7 @@ class SynchronousAggregatorTest {
         // --- Prepare ---
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 10)
         val aggregator = Aggregator<String>(
+            callerThreadTestExecutor,
             callerThreadTestExecutor,
             10,
             { testSync.sendEvent("aggregator subscribed") }

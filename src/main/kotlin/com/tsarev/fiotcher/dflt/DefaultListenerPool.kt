@@ -59,11 +59,11 @@ class DefaultListenerPool(
 
     override fun stop(force: Boolean) = brake.push { brk ->
         val listenersCopy = HashMap(registeredListeners)
-        registeredListeners.clear()
         val allListenersStopFuture = listenersCopy
-            .map { deRegisterListener(it.key, force) }
+            .map { doDeRegisterListener(it.key, force, it.value) }
             .reduce { first, second -> first.thenAcceptBoth(second) { _, _ -> } }
         allListenersStopFuture.thenAccept {
+            registeredListeners.clear()
             brk.complete(Unit)
         }
     }

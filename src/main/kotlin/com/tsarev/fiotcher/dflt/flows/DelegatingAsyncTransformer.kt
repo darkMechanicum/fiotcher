@@ -69,12 +69,12 @@ class DelegatingAsyncTransformer<FromT : Any, ToT : Any, ListenerT>(
 
     private val additionalBrake = Brake<Unit>()
 
-    override fun stop(force: Boolean) = additionalBrake.push {
+    override fun stop(force: Boolean) = additionalBrake.push { brk ->
         super.stop(force)
             .runAfterBoth(loopForEventsCompletion(force)) {
                 destination.close()
                 chained.stop(force)
-                it.complete(Unit)
+                brk.complete(Unit)
             }
     }
 
@@ -92,6 +92,10 @@ class DelegatingAsyncTransformer<FromT : Any, ToT : Any, ListenerT>(
             CompletableFuture.completedFuture(Unit)
         else
             CompletableFuture.runAsync(
-                { while (destination.estimateMaximumLag() != 0) Thread.sleep(10) }, stoppingExecutor
+                { while (destination.estimateMaximumLag() != 0) Thread.sleep(100) }, stoppingExecutor
             )
+
+    override fun doOnComplete() {
+        stop(false)
+    }
 }

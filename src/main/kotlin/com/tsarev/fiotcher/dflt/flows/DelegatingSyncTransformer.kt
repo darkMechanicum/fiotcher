@@ -37,5 +37,6 @@ class DelegatingSyncTransformer<ToT : Any, FromT : Any>(
         }
     }
 
-    override fun onError(throwable: Throwable) = delegate.onError(throwable)
+    override fun doOnError(throwable: Throwable) = delegate.onError(throwable)
+    override fun doOnComplete() = stop(false).let {}
 }

@@ -10,6 +10,7 @@ class CommonListener<ResourceT : Any>(
     private val onNextHandler: (ResourceT) -> Unit,
     private val onSubscribeHandler: (Flow.Subscription) -> Unit = {},
     private val onErrorHandler: (Throwable) -> Unit = { throw it },
+    private val onCompleteHandler: () -> Unit = { },
 ) : SingleSubscriptionSubscriber<ResourceT>() {
 
     /**
@@ -31,5 +32,9 @@ class CommonListener<ResourceT : Any>(
 
     override fun doOnError(throwable: Throwable) {
         onErrorHandler(throwable)
+    }
+
+    override fun doOnComplete() {
+        onCompleteHandler()
     }
 }

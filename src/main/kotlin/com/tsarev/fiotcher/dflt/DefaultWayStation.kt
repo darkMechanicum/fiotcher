@@ -138,5 +138,13 @@ class DefaultWayStation(
             // Free aggregator.
             aggregator = null
         }
+
+        override fun doOnComplete() {
+            canceled.set(true)
+            // Free aggregator.
+            aggregator = null
+        }
+
+        override fun doOnError(throwable: Throwable) = Unit
     }
 }

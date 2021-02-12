@@ -45,6 +45,8 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> :
     override fun stop(force: Boolean) = brake.pushCompleted(Unit) {
         _subscription?.cancel()
         _subscription = null
+        // Call self [onComplete] since [SubmissionPublisher] won't do it.
+        onComplete()
     }
 
     /**
@@ -81,6 +83,20 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> :
         throwable.printStackTrace()
         doOnError(throwable)
     }
+
+    /**
+     * Additional on error logic.
+     */
+    abstract fun doOnError(throwable: Throwable)
+
+    override fun onComplete() {
+        doOnComplete()
+    }
+
+    /**
+     * Additional on complete logic.
+     */
+    abstract fun doOnComplete()
 
     /**
      * Try to handle exceptions in the provided block,
@@ -125,17 +141,6 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> :
                 throw FiotcherException("Exception while transforming another: [$common]", innerCause)
             }
         } else throw common
-    }
-
-    /**
-     * Additional on error logic.
-     */
-    open fun doOnError(throwable: Throwable) {
-
-    }
-
-    override fun onComplete() {
-        // no-op
     }
 
     override fun <FromT : Any> WayStation.doSyncDelegateFrom(

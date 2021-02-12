@@ -84,7 +84,7 @@ class AsynchronousDelegatingAsyncTransformerTest {
 
     @Test
     fun `asynchronous force stop after submit`() {
-        // Prepare.
+        // --- Prepare ---
         val chained = CommonListener<String>(
             { testAsync.sendEvent("chained $it") },
             { testAsync.sendEvent("chained subscribed") }
@@ -96,7 +96,7 @@ class AsynchronousDelegatingAsyncTransformerTest {
         )
         val publisher = SubmissionPublisher<EventWithException<String>>(executor, 10)
 
-        // Test.
+        // --- Test ---
         val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
             executor = executor,
             maxCapacity = 10,
@@ -168,7 +168,7 @@ class AsynchronousDelegatingAsyncTransformerTest {
         )
         val publisher = SubmissionPublisher<EventWithException<String>>(publisherExecutor, 10)
 
-        // --- Prepare ---
+        // --- Test ---
         // Start listener.
         val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
             executor = listenerExecutor,
@@ -247,7 +247,7 @@ class AsynchronousDelegatingAsyncTransformerTest {
         )
         val publisher = SubmissionPublisher<EventWithException<String>>(innerExecutor, 10)
 
-        // --- Prepare ---
+        // --- Test ---
         // Start listener.
         val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
             executor = innerExecutor,

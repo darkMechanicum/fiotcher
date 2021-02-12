@@ -7,7 +7,7 @@ import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.flows.Aggregator
 import com.tsarev.fiotcher.internal.pool.AggregatorPool
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executor
 
 /**
  * Default implementation of [AggregatorPool].
@@ -22,7 +22,11 @@ class DefaultAggregatorPool(
     /**
      * Executor, used to perform queue submission and processing by aggregators and trackers.
      */
-    private val queueExecutorService: ExecutorService,
+    private val queueExecutorService: Executor,
+    /**
+     * Executor, used to perform pool stopping.
+     */
+    private val stoppingExecutor: Executor,
 ) : AggregatorPool, Stoppable {
 
     /**
@@ -40,7 +44,7 @@ class DefaultAggregatorPool(
         synchronized(this) {
             checkIsStopping { PoolIsStopped() }
             val result = aggregators.computeIfAbsent(key) {
-                Aggregator<EventT>(queueExecutorService, aggregatorMaxCapacity)
+                Aggregator<EventT>(queueExecutorService, stoppingExecutor, aggregatorMaxCapacity)
             }
             return result as? Aggregator<EventT> ?: throw FiotcherException("Cant be here within normal operation")
         }

@@ -40,8 +40,9 @@ class AsynchronousAggregatorTest {
         val publisher = SubmissionPublisher<EventWithException<String>>(publisherExecutor, 10)
         val aggregator = Aggregator<String>(
             aggregatorExecutor,
+            callerThreadTestExecutor,
             10,
-            { testAsync.sendEvent("aggregator subscribed") }
+            { testAsync.sendEvent("aggregator subscribed") },
         )
 
         val firstSubscriber = object : Flow.Subscriber<EventWithException<String>> {
@@ -116,6 +117,7 @@ class AsynchronousAggregatorTest {
         val publisher = SubmissionPublisher<EventWithException<String>>(publisherExecutor, 10)
         val aggregator = Aggregator<String>(
             aggregatorExecutor,
+            callerThreadTestExecutor,
             10,
             { testAsync.sendEvent("aggregator subscribed") }
         )
@@ -182,6 +184,7 @@ class AsynchronousAggregatorTest {
         val publisher = SubmissionPublisher<EventWithException<String>>(publisherExecutor, 10)
         val aggregator = Aggregator<String>(
             aggregatorExecutor,
+            callerThreadTestExecutor,
             10,
             { testAsync.sendEvent("aggregator subscribed") }
         )
@@ -242,6 +245,7 @@ class AsynchronousAggregatorTest {
         val publisher = SubmissionPublisher<EventWithException<String>>(publisherExecutor, 10)
         val aggregator = Aggregator<String>(
             aggregatorExecutor,
+            callerThreadTestExecutor,
             10,
             { testAsync.sendEvent("aggregator subscribed") }
         )

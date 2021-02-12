@@ -51,7 +51,8 @@ class DefaultProcessor<WatchT : Any>(
 
     private val aggregatorPool: DefaultAggregatorPool = DefaultAggregatorPool(
         aggregatorMaxCapacity,
-        queueExecutorService
+        queueExecutorService,
+        stoppingExecutorService
     ),
 
     private val wayStation: WayStation = DefaultWayStation(
