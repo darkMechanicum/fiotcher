@@ -9,10 +9,10 @@ _Done:_
 1. Builder API implementation
 1. Tests for DefaultAggregatorPool
 1. Tests for DefaultListenerPool
-
+1. Tests for DefaultTrackerPool
+   
 _Not done:_
 
-1. Tests for DefaultTrackerPool
 1. Tests for DefaultWayStation
 1. Tests for DefaultProcessor
 1. Tests for DefaultFileProcessorManager
