@@ -6,6 +6,11 @@ import java.util.concurrent.atomic.AtomicReference
 typealias Brake<T> = AtomicReference<CompletableFuture<T>?>
 
 /**
+ * Check, if this brake was once pushed.
+ */
+val <T> Brake<T>.isPushed get() = this.get() != null
+
+/**
  * Push the brake once with [CompletableFuture], if it was not pushed.
  */
 inline fun <T> Brake<T>.push(block: (CompletableFuture<T>) -> Unit = {}): CompletableFuture<T> {

@@ -4,14 +4,29 @@ import org.junit.jupiter.api.Assertions
 import java.io.File
 import java.nio.file.Paths
 import java.util.*
+import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.Executor
 import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.TimeUnit
 
 /**
- * Caller thread executor service, that turns test effectively synchronous.
+ * Caller thread executor, that turns test effectively synchronous.
  */
 val callerThreadTestExecutor = Executor { it.run() }
+
+/**
+ * Caller thread executor, that turns test effectively synchronous.
+ */
+val callerThreadTestExecutorService = object : AbstractExecutorService() {
+    override fun shutdown() = Unit
+    override fun shutdownNow() = listOf<Runnable>()
+    override fun isShutdown() = false
+    override fun isTerminated() = false
+    override fun awaitTermination(timeout: Long, unit: TimeUnit) = false
+    override fun execute(command: Runnable) {
+        command.run()
+    }
+}
 
 // --- Utilities for testing async code in sync - like way ---
 /**

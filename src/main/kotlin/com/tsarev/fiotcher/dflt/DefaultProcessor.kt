@@ -66,7 +66,6 @@ class DefaultProcessor<WatchT : Any>(
         trackerExecutor,
         queueExecutorService,
         registrationExecutorService,
-        stoppingExecutorService,
         aggregatorPool
     ),
 

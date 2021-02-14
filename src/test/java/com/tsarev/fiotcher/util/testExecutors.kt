@@ -2,9 +2,7 @@ package com.tsarev.fiotcher.util
 
 import com.tsarev.fiotcher.util.TestExecutorRegistry.TestExecutor
 import com.tsarev.fiotcher.util.TestExecutorRegistry.suspendAllBut
-import java.util.concurrent.Executor
-import java.util.concurrent.LinkedBlockingDeque
-import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -26,7 +24,11 @@ object TestExecutorRegistry {
     /**
      * Create single executor and add it to the queue.
      */
-    fun acquireExecutor(name: String = "default", beforeStart: () -> Unit, afterCompletion: () -> Unit): TestExecutor {
+    fun acquireExecutor(
+        name: String = "default",
+        beforeStart: (String) -> Unit,
+        afterCompletion: (String) -> Unit
+    ): TestExecutor {
         val result = DefaultTestExecutor(name, beforeStart, afterCompletion)
         executors += result
         return result
@@ -37,25 +39,34 @@ object TestExecutorRegistry {
      */
     fun clear() {
         executors.forEach { it.interrupt() }
+        executors.forEach { it.suspended = true }
         executors.clear()
     }
 
     /**
      * Stop all other executors but one, that is activated.
      */
-    fun suspendAllBut(executor: TestExecutor) {
-        if (executor !is DefaultTestExecutor) throw IllegalArgumentException()
+    fun suspendAllBut(executors: Iterable<TestExecutor>) {
+        val castedExecutors = executors.map { it as? DefaultTestExecutor ?: throw IllegalArgumentException() }
         synchronized(this) {
-            executors.forEach { it.suspended = true }
-            executor.suspended = false
+            this.executors.forEach { it.suspended = true }
+            castedExecutors.forEach { it.suspended = false }
         }
+    }
+
+    /**
+     * Activate all executors.
+     */
+    fun activateAll() {
+        this.executors.forEach { it.suspended = false }
     }
 
     /**
      * Test executor, that can be `activated` on a block of code.
      */
-    interface TestExecutor : Executor, AutoCloseable {
+    interface TestExecutor : ExecutorService, AutoCloseable {
         fun activate(block: () -> Unit)
+        fun suspend()
     }
 
     /**
@@ -63,27 +74,36 @@ object TestExecutorRegistry {
      */
     private class DefaultTestExecutor(
         private val name: String,
-        private val beforeStart: () -> Unit,
-        private val afterCompletion: () -> Unit
-    ) : TestExecutor {
+        private val beforeStart: (String) -> Unit,
+        private val afterCompletion: (String) -> Unit
+    ) : AbstractExecutorService(), TestExecutor {
         override fun activate(block: () -> Unit) {
             try {
-                suspendAllBut(this)
+                suspendAllBut(listOf(this))
                 block()
             } finally {
                 suspended = true
             }
         }
 
+        override fun suspend() {
+            suspended = true
+        }
+
         fun interrupt() = singleTestThread.interrupt()
 
         @Volatile
         var suspended = true
-        private val loggingEnabled = System.getProperty("com.tsarev.fiotcher.tests.log", "false").toBoolean()
+        private val loggingEnabled = System.getProperty("com.tsarev.fiotcher.tests.log", "true").toBoolean()
         private val counter = AtomicLong(0)
         private val testThreadTasks = LinkedBlockingDeque<Runnable>()
+        private var isShutdown = false
         private val singleTestThread = Thread {
-            while (!Thread.currentThread().isInterrupted) {
+            mainLoop()
+        }.apply { isDaemon = true; start() }
+
+        private fun mainLoop() {
+            while (!isShutdown && !Thread.currentThread().isInterrupted) {
                 try {
                     if (suspended) {
                         // Loop while we are suspended.
@@ -101,14 +121,14 @@ object TestExecutorRegistry {
                     ignored.printStackTrace()
                 }
             }
-        }.apply { isDaemon = true; start() }
+        }
 
         override fun execute(command: Runnable) {
             val value = counter.incrementAndGet()
             log { "[REQUEST $name $value]: $command" }
-            testThreadTasks.add { log { "[EXECUTE $name $value]: before" }; beforeStart() }
+            testThreadTasks.add { log { "[EXECUTE $name $value]: before" }; beforeStart("$name start") }
             testThreadTasks.add { log { "[EXECUTE $name $value]: $command" }; command.run() }
-            testThreadTasks.add { log { "[EXECUTE $name $value]: after" }; afterCompletion() }
+            testThreadTasks.add { log { "[EXECUTE $name $value]: after" }; afterCompletion("$name finished") }
         }
 
         /**
@@ -120,10 +140,25 @@ object TestExecutorRegistry {
             }
         }
 
-        override fun close() {
-            singleTestThread.interrupt()
-        }
+        override fun close() = singleTestThread.interrupt()
+        override fun shutdown() = activate { mainLoop() }
+        override fun shutdownNow() = singleTestThread.interrupt().let { testThreadTasks.toList() }
+        override fun isShutdown() = isShutdown
+        override fun isTerminated() = testThreadTasks.isEmpty()
+        override fun awaitTermination(timeout: Long, unit: TimeUnit) = throw UnsupportedOperationException()
     }
+}
+
+fun Iterable<TestExecutor>.activate(block: () -> Unit) {
+    suspendAllBut(this)
+    block()
+    this.forEach { it.suspend() }
+}
+
+fun activateAll(block: () -> Unit) {
+    TestExecutorRegistry.activateAll()
+    block()
+    suspendAllBut(listOf())
 }
 
 /**
@@ -131,6 +166,14 @@ object TestExecutorRegistry {
  */
 fun acquireExecutor(
     name: String = "default",
-    beforeStart: () -> Unit = { },
-    afterCompletion: () -> Unit = { },
+    beforeStart: (String) -> Unit = { },
+    afterCompletion: (String) -> Unit = { },
 ) = TestExecutorRegistry.acquireExecutor(name, beforeStart, afterCompletion)
+
+/**
+ * Convenient function to use without [TestExecutorRegistry].
+ */
+fun acquireExecutor(
+    name: String = "default",
+    wrapper: (String) -> Unit = { }
+) = TestExecutorRegistry.acquireExecutor(name, wrapper, wrapper)

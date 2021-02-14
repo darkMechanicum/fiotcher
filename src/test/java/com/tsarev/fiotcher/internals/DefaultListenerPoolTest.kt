@@ -326,9 +326,6 @@ class DefaultListenerPoolTest {
         }
 
         pool.stop(true)
-        listenerStoppingExecutor.activate {
-            testAsync.assertEvent("listener stopping executor start")
-        }
 
         // Check that listener is being closed immediately.
         listenerExecutor.activate {
@@ -392,7 +389,7 @@ class DefaultListenerPoolTest {
         )
         val pool = DefaultListenerPool(aggregatorPool)
         val firstListener = CommonListener<String>(
-            onNextHandler = { }, onErrorHandler = { testSync.sendEvent("canceled") }
+            onNextHandler = { }, onCompleteHandler = { testSync.sendEvent("canceled") }
         )
         val secondListener = CommonListener<String>({ }, onSubscribeHandler = { testSync.sendEvent("subscribed") })
 

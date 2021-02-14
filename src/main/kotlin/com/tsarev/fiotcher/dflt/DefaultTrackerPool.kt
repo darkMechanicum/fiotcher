@@ -6,6 +6,7 @@ import com.tsarev.fiotcher.internal.pool.AggregatorPool
 import com.tsarev.fiotcher.internal.pool.Tracker
 import com.tsarev.fiotcher.internal.pool.TrackerPool
 import java.util.concurrent.*
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Default tracker pool implementation, which also serves as
@@ -20,17 +21,12 @@ class DefaultTrackerPool<WatchT : Any>(
     /**
      * Executor, used to perform queue submission and processing by aggregators and trackers.
      */
-    private val queueExecutorService: ExecutorService,
+    private val queueExecutorService: Executor,
 
     /**
      * Executor, used to perform trackers registration process.
      */
     private val registrationExecutorService: ExecutorService,
-
-    /**
-     * Executor, used at stopping.
-     */
-    private val stoppingExecutorService: ExecutorService,
 
     /**
      * [AggregatorPool] for aggregator synchronous access.
@@ -95,7 +91,7 @@ class DefaultTrackerPool<WatchT : Any>(
             // Stop silently if pool is stopped. Tracker will be stopped by [stop] method, since it is in the map already.
             if (this@DefaultTrackerPool.isStopped) return@submit
 
-            var wrappedTracker: Tracker<WatchT>? = null
+            val wrappedTracker: Tracker<WatchT>?
             try {
                 // We don't need additional type info, since there can only be one tracker by string key.
                 val asTyped = key.typedKey<InitialEventsBunch<WatchT>>()
@@ -137,8 +133,6 @@ class DefaultTrackerPool<WatchT : Any>(
                     resultFuture.completeExceptionally(cause)
                     throw cause
                 }
-            } finally {
-                resultFuture.complete(wrappedTracker ?: mockTracker)
             }
         }
 
@@ -176,17 +170,9 @@ class DefaultTrackerPool<WatchT : Any>(
             .map { (key, value) -> doStopTracker(key.first, key.second, force, value.tracker) }
             .reduce { first, second -> first.thenAcceptBoth(second) { _, _ -> } }
 
-        val executorShutDownFuture: CompletionStage<*> = CompletableFuture.supplyAsync(
-            {
-                if (force) trackerExecutor.shutdownNow() else trackerExecutor.shutdown()
-                if (force) queueExecutorService.shutdownNow() else queueExecutorService.shutdown()
-                if (force) registrationExecutorService.shutdownNow() else registrationExecutorService.shutdown()
-            }, stoppingExecutorService
-        )
-
         // Combine all futures in one and clear resources after their completion.
         // Order matters here.
-        allTrackersStopFuture.thenAcceptBoth(executorShutDownFuture) { _, _ ->
+        allTrackersStopFuture.thenAccept {
             registeredTrackers.clear()
             brk.complete(Unit)
         }
@@ -234,15 +220,30 @@ class DefaultTrackerPool<WatchT : Any>(
         return if (foundInfo != null && foundInfo.tracker === tracker) {
             // Add handler to stop tracker and remove it from registered.
             val submissionHandle = foundInfo.submissionFuture
-            // Remove only that tracker, that we are stopping.
-            val resultHandle = submissionHandle.whenComplete { _, _ ->
-                registeredTrackers.computeIfPresent(trackerKey) { _, old -> if (tracker === old.tracker) null else old }
-            }.thenCompose { stoppable ->
-                if (force) foundInfo.trackerTaskHandle?.cancel(force)
-                stoppable?.stop(force)?.thenAccept { }
+            // Separate future as workaround of no `thenCompose` on abnormal completion.
+            val resultHandle = CompletableFuture<Unit>()
+            submissionHandle.whenComplete { _, _ ->
+                try {
+                    // Additional flag to distinguish between no registered tracker and other registered.
+                    val wasPresent = AtomicBoolean(false)
+                    // Remove only that tracker, that we are stopping.
+                    val present = registeredTrackers.computeIfPresent(trackerKey) { _, old ->
+                        if (tracker === old.tracker) {
+                            wasPresent.set(true); null
+                        } else old
+                    }
+                    if (wasPresent.get() && present == null) { // Only stop once, on first removal.
+                        if (force) foundInfo.trackerTaskHandle?.cancel(force)
+                        tracker.stop(force).thenAccept { resultHandle.complete(Unit) }
+                    } else resultHandle.complete(Unit)
+                } catch (cause: Throwable) {
+                    resultHandle.completeExceptionally(cause)
+                }
             }
-            // Cancel the handle in case it is not finished yet if we are forcing.
-            submissionHandle.cancel(true)
+            // Cancel the handle in case it is not finished yet, if we are forcing.
+            if (force) {
+                submissionHandle.cancel(true)
+            }
             resultHandle
         } else {
             CompletableFuture.completedFuture(Unit)
