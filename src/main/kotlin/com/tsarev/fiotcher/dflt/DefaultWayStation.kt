@@ -8,7 +8,7 @@ import com.tsarev.fiotcher.dflt.flows.SingleSubscriptionSubscriber
 import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.flow.ChainingListener
 import com.tsarev.fiotcher.internal.flow.WayStation
-import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executor
 import java.util.concurrent.Flow
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -27,12 +27,12 @@ class DefaultWayStation(
     /**
      * Executor service, used for asynchronous transformers.
      */
-    private val transformerExecutorService: ExecutorService,
+    private val transformerExecutor: Executor,
 
     /**
      * Executor, used at stopping.
      */
-    private val stoppingExecutorService: ExecutorService,
+    private val stoppingExecutor: Executor,
 
     /**
      * Aggregator pool.
@@ -100,8 +100,8 @@ class DefaultWayStation(
         handleErrors: ((Throwable) -> Throwable?)?,
         transformer: (FromT, (ToT) -> Unit) -> Unit,
     ) = doAsyncDelegateFrom(
-        executor = transformerExecutorService,
-        stoppingExecutor = stoppingExecutorService,
+        executor = transformerExecutor,
+        stoppingExecutor = stoppingExecutor,
         maxCapacity = maxTransformerQueueCapacity,
         transformer = transformer,
         handleErrors = handleErrors
