@@ -25,7 +25,7 @@ class ErrorHandling {
         // --- Prepare ---
         val testExecutor = acquireExecutor()
         val manager = DefaultFileProcessorManager(DefaultProcessor(
-            queueExecutorService = testExecutor
+            aggregatorExecutorService = testExecutor
         ))
         val key = "key"
         // Start tracking file.
@@ -44,13 +44,14 @@ class ErrorHandling {
             }
 
         // --- Test ---
-        // Create and delete first file, so event will be sent on non existing file, while executor is supended.
+        // Create and delete first file, so event will be sent on non existing file, while executor is suspended.
         val file = tempDir.createFile("newFile.txt") { "first" }
         // Small pause to give filesystem some time.
         Thread.sleep(200)
         file.delete()
 
-        activateAll {
+        // Activate executor.
+        testExecutor.activate {
             // Check that event was passed.
             testAsync.assertEvent<FileNotFoundException> {
                 Assertions.assertEquals("${file.absolutePath} (No such file or directory)", it.message)

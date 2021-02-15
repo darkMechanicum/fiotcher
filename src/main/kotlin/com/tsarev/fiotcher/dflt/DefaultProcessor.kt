@@ -1,13 +1,11 @@
 package com.tsarev.fiotcher.dflt
 
+import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.internal.Processor
 import com.tsarev.fiotcher.internal.flow.WayStation
 import com.tsarev.fiotcher.internal.pool.ListenerPool
 import com.tsarev.fiotcher.internal.pool.TrackerPool
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
-import java.util.concurrent.Flow
-import java.util.concurrent.ForkJoinPool
+import java.util.concurrent.*
 
 /**
  * Default processor implementation, using
@@ -22,27 +20,35 @@ class DefaultProcessor<WatchT : Any>(
     /**
      * Executor service, used for asynchronous transformers.
      */
-    transformerExecutorService: ExecutorService = Executors.newCachedThreadPool(), // Separate pool due to possible I/O operations while reading changes.
+    // Separate pool due to possible blocking operations while reading changes.
+    private val transformerExecutorService: ExecutorService = Executors.newCachedThreadPool(),
 
     /**
      * Executor, used to run trackers.
      */
-    trackerExecutor: ExecutorService = Executors.newCachedThreadPool(), //Separate pool due to possible blocking I/O operations while tracking.
+    //Separate pool due to possible blocking operations while tracking.
+    private val trackerExecutor: ExecutorService = Executors.newCachedThreadPool(),
 
     /**
-     * Executor, used to perform queue processing by aggregators.
+     * Executor, used to perform tracker event publishing to aggregators.
      */
-    queueExecutorService: ExecutorService = ForkJoinPool.commonPool(),
+    private val trackerExecutorService: ExecutorService = ForkJoinPool.commonPool(),
+
+    /**
+     * Executor, used to perform queue aggregation.
+     */
+    private val aggregatorExecutorService: ExecutorService = ForkJoinPool.commonPool(),
 
     /**
      * Executor, used to perform trackers registration process.
      */
-    registrationExecutorService: ExecutorService = ForkJoinPool.commonPool(),
+    private val registrationExecutorService: ExecutorService = ForkJoinPool.commonPool(),
 
     /**
      * Executor, used at stopping.
      */
-    stoppingExecutorService: ExecutorService = Executors.newCachedThreadPool(), // Separate pool for possible-blocking shutdown.
+    // Separate pool for possible-blocking shutdown.
+    private val stoppingExecutorService: ExecutorService = Executors.newCachedThreadPool(),
 
     /**
      * Maximum capacity for aggregator queues.
@@ -51,7 +57,7 @@ class DefaultProcessor<WatchT : Any>(
 
     private val aggregatorPool: DefaultAggregatorPool = DefaultAggregatorPool(
         aggregatorMaxCapacity,
-        queueExecutorService,
+        aggregatorExecutorService,
         stoppingExecutorService
     ),
 
@@ -64,7 +70,7 @@ class DefaultProcessor<WatchT : Any>(
 
     private val trackerPool: TrackerPool<WatchT> = DefaultTrackerPool(
         trackerExecutor,
-        queueExecutorService,
+        trackerExecutorService,
         registrationExecutorService,
         aggregatorPool
     ),
@@ -73,7 +79,58 @@ class DefaultProcessor<WatchT : Any>(
         aggregatorPool
     ),
 
-    ) : Processor<WatchT>,
-    TrackerPool<WatchT> by trackerPool,
-    ListenerPool by listenerPool,
-    WayStation by wayStation
+    ) : Processor<WatchT>, Stoppable, TrackerPool<WatchT> by trackerPool, ListenerPool by listenerPool, WayStation by wayStation {
+
+    /**
+     * Main processor brake.
+     */
+    private val brake = Brake<Unit>()
+
+    override val isStopped get() = brake.isPushed
+
+    override fun stop(force: Boolean) = brake.push { brk ->
+        if (force) {
+            val aggregatorHandle = aggregatorPool.stop(force)
+            val listenerHandle = listenerPool.stop(force).thenAccept { }
+            val executorsHandle = CompletableFuture.runAsync({
+                trackerExecutor.shutdownNow()
+                aggregatorExecutorService.shutdownNow()
+                transformerExecutorService.shutdownNow()
+                trackerExecutorService.shutdownNow()
+                registrationExecutorService.shutdownNow()
+            }, stoppingExecutorService)
+            trackerPool.stop(force)
+                .thenCompose { aggregatorHandle }
+                .thenCompose { listenerHandle }
+                .thenCompose { executorsHandle }
+                .thenAccept {
+                    // Stopping executor must be shot down lastly.
+                    stoppingExecutorService.shutdown()
+                    brk.complete(Unit)
+                }
+        } else {
+            // Order is important to guarantee graceful stopping order.
+            trackerPool.stop(force)
+                .thenCompose { aggregatorPool.stop(force) }
+                .thenCompose { listenerPool.stop(force).thenAccept { } }
+                .thenAccept {
+                    trackerExecutor.shutdown()
+                    aggregatorExecutorService.shutdown()
+                    transformerExecutorService.shutdown()
+                    trackerExecutorService.shutdown()
+                    registrationExecutorService.shutdown()
+                    stoppingExecutorService.shutdown()
+                    brk.complete(Unit)
+                }
+        }
+    }
+
+    override fun stopAndWait(force: Boolean) {
+        stop(force).toCompletableFuture().get()
+    }
+
+    override fun stopAndWait(timeout: Long, unit: TimeUnit, force: Boolean) {
+        stop(force).toCompletableFuture().get(timeout, unit)
+    }
+
+}

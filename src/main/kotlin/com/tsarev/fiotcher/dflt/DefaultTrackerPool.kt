@@ -16,12 +16,12 @@ class DefaultTrackerPool<WatchT : Any>(
     /**
      * Executor, used to run trackers.
      */
-    override val trackerExecutor: ExecutorService,
+    private val trackerExecutor: ExecutorService,
 
     /**
      * Executor, used to perform queue submission and processing by aggregators and trackers.
      */
-    private val queueExecutorService: Executor,
+    private val trackerExecutorService: Executor,
 
     /**
      * Executor, used to perform trackers registration process.
@@ -98,7 +98,7 @@ class DefaultTrackerPool<WatchT : Any>(
                 // Try to init tracker and subscribe to its publisher.
                 // Can throw exception due to pool stopping, but we will handle it later.
                 val targetAggregator = aggregatorPool.getAggregator(asTyped)
-                val trackerPublisher = tracker.init(resourceBundle, queueExecutorService)
+                val trackerPublisher = tracker.init(resourceBundle, trackerExecutorService)
                 trackerPublisher.subscribe(targetAggregator)
 
                 // Start tracker. From now he is treated like started.

@@ -17,11 +17,6 @@ import java.util.concurrent.Executor
 interface TrackerPool<WatchT : Any> : Stoppable {
 
     /**
-     * Executor, that is used to launch trackers.
-     */
-    val trackerExecutor: Executor
-
-    /**
      * Register and start tracker to scan passed [resourceBundle].
      *
      * @param resourceBundle bundle, for which tracker was registered

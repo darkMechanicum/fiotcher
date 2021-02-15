@@ -10,8 +10,8 @@ import java.util.concurrent.CompletionStage
 import kotlin.reflect.KClass
 
 class DefaultFileProcessorManager(
-    override val processor: Processor<File>
-) : FileProcessorManager {
+    override val processor: Processor<File> = DefaultProcessor()
+) : FileProcessorManager, Stoppable by processor {
 
     override fun startTrackingFile(path: File, key: String, recursively: Boolean): CompletionStage<out Stoppable> {
         val fileSystemTracker = FileSystemTracker(recursive = recursively)

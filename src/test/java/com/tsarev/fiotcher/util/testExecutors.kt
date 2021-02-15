@@ -123,6 +123,14 @@ object TestExecutorRegistry {
             }
         }
 
+        private fun mainLoopShutdown() {
+            var runnable = testThreadTasks.poll()
+            while (runnable != null) {
+                runnable.run()
+                runnable = testThreadTasks.poll()
+            }
+        }
+
         override fun execute(command: Runnable) {
             val value = counter.incrementAndGet()
             log { "[REQUEST $name $value]: $command" }
@@ -141,7 +149,7 @@ object TestExecutorRegistry {
         }
 
         override fun close() = singleTestThread.interrupt()
-        override fun shutdown() = activate { mainLoop() }
+        override fun shutdown() = singleTestThread.interrupt().run { mainLoopShutdown() }
         override fun shutdownNow() = singleTestThread.interrupt().let { testThreadTasks.toList() }
         override fun isShutdown() = isShutdown
         override fun isTerminated() = testThreadTasks.isEmpty()
