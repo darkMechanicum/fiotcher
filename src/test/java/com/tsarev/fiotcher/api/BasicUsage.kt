@@ -32,13 +32,13 @@ class BasicUsage {
         // --- Test ---
 
         // Create first file.
-        tempDir.createFile("newFile.txt")
+        tempDir.createFile("newFile.txt") { "content" }
 
         // Check that event was passed.
         testAsync.assertEvent("newFile.txt")
 
         // Create second file.
-        tempDir.createFile("newFile2.txt")
+        tempDir.createFile("newFile2.txt") { "content" }
 
         // Check that event was passed.
         testAsync.assertEvent("newFile2.txt")
