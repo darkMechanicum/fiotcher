@@ -33,7 +33,7 @@ data class SaxEvent(
 
 fun FileProcessorManager.handleSax(
     key: String,
-    parsingErrorHandler: ((SAXException) -> Unit)?,
+    parsingErrorHandler: ((SAXException) -> Unit)? = null,
     saxListener: (SaxEvent) -> Unit
 ) = listenForInitial(key)
     .delegate<File>(async = true) { bunch, publisher -> bunch.forEach { publisher(it) } }

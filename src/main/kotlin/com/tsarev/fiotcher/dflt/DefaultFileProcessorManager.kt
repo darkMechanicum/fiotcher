@@ -26,12 +26,21 @@ class DefaultFileProcessorManager(
         return ListenerBuilderInitial(key.typedKey())
     }
 
+    override fun stopListeningInitial(key: String, force: Boolean) =
+        processor.deRegisterListener(key.typedKey<InitialEventsBunch<File>>(), force)
+
     override fun <EventT : ProcessorManager.EventMarker> listenForKey(
         key: String,
         type: KClass<EventT>
     ): ProcessorManager.ListenerBuilder<EventT> {
         return ListenerBuilderInitial(key.typedKey(type))
     }
+
+    override fun <EventT : ProcessorManager.EventMarker> stopListening(
+        key: String,
+        type: KClass<EventT>,
+        force: Boolean
+    ) = processor.deRegisterListener(key.typedKey(type), force)
 
     abstract inner class DefaultListenerBuilderBase<InitialT : Any, EventT : Any, PreviousT : Any>(
         private val key: KClassTypedKey<InitialT>
@@ -89,8 +98,7 @@ class DefaultFileProcessorManager(
                 handleErrors = handleErrors
             )
             val initialListener = chain(lastListener)
-            processor.registerListener(initialListener, key)
-            return initialListener
+            return processor.registerListener(initialListener, key)
         }
 
         override fun doAggregate(

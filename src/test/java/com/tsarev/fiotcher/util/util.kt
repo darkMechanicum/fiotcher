@@ -2,6 +2,7 @@ package com.tsarev.fiotcher.util
 
 import org.junit.jupiter.api.Assertions
 import java.io.File
+import java.io.PrintWriter
 import java.nio.file.Paths
 import java.util.*
 import java.util.concurrent.AbstractExecutorService
@@ -87,6 +88,20 @@ fun AsyncTestEvents.sendEvent(event: Any, timeoutMs: Long = defaultTestAsyncAsse
 }
 
 /**
+ * Get first event of [T] from the queue and assert it with specified block.
+ *
+ * @param assertion an assertion to apply to found typed eevent
+ * @param timeoutMs time allocated for receiving
+ */
+inline fun <reified T> AsyncTestEvents.assertEvent(timeoutMs: Long = defaultTestAsyncAssertTimeoutMs, assertion: (T) -> Unit) {
+    when (val polled = poll(timeoutMs, TimeUnit.MILLISECONDS)) {
+        is T -> assertion(polled)
+        null -> Assertions.fail<Unit>("No event received")
+        else -> Assertions.fail { "Expected event [$polled] has type [${polled::class}] instead of expected [${T::class}]" }
+    }
+}
+
+/**
  * Get event from the queue and assert it equality with specified [event].
  *
  * @param event event to compare with
@@ -113,11 +128,13 @@ fun AsyncTestEvents.assertNoEvent(timeoutMs: Long = defaultTestAsyncAssertTimeou
 /**
  * Create empty file in [this] directory.
  */
-fun File.createFile(name: String): File {
+fun File.createFile(name: String, content: () -> String = { "" }): File {
     if (!exists()) throw IllegalArgumentException("No such directory ${this.absolutePath}")
     if (!isDirectory) throw IllegalArgumentException("File ${this.absolutePath} is not a directory")
     return Paths.get(this.absolutePath, name).toFile().apply {
-        if (!exists()) createNewFile()
+        if (!exists()) {
+            PrintWriter(this).use { it.append(content()) }
+        }
     }
 }
 

@@ -62,7 +62,7 @@ class DefaultProcessor<WatchT : Any>(
         aggregatorPool
     ),
 
-    private val trackerPool: TrackerPool<WatchT> = DefaultTrackerPool<WatchT>(
+    private val trackerPool: TrackerPool<WatchT> = DefaultTrackerPool(
         trackerExecutor,
         queueExecutorService,
         registrationExecutorService,

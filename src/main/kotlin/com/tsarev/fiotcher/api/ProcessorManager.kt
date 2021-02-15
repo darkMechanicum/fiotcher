@@ -32,9 +32,17 @@ interface ProcessorManager<InitialEventT : Any> {
 
     fun listenForInitial(key: String): ListenerBuilder<InitialEventsBunch<InitialEventT>>
 
+    fun stopListeningInitial(
+        key: String, force: Boolean = false
+    ): CompletionStage<*>
+
     interface EventMarker
 
     fun <EventT : EventMarker> listenForKey(key: String, type: KClass<EventT>): ListenerBuilder<EventT>
+
+    fun <EventT : EventMarker> stopListening(
+        key: String, type: KClass<EventT>, force: Boolean = false
+    ): CompletionStage<*>
 
     interface ListenerBuilder<EventT : Any> {
 

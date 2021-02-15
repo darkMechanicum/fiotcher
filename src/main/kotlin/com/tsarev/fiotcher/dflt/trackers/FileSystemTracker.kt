@@ -40,6 +40,21 @@ class FileSystemTracker(
      */
     private val recursive: Boolean = true,
 
+    /**
+     * If should track changes.
+     */
+    private val trackChanges: Boolean = true,
+
+    /**
+     * If should track creations.
+     */
+    private val trackCreations: Boolean = false,
+
+    /**
+     * If should track deletions.
+     */
+    private val trackDeletions: Boolean = false,
+
     ) : Tracker<File>() {
 
     /**
@@ -130,7 +145,11 @@ class FileSystemTracker(
                         if (allEntries.isNotEmpty()) {
                             // Watch only changed and created entities.
                             val events = allEntries
-                                .filter { it.type == EventType.CREATED || it.type == EventType.CHANGED }
+                                .filter {
+                                    trackCreations && it.type == EventType.CREATED ||
+                                            trackChanges && it.type == EventType.CHANGED ||
+                                            trackDeletions && it.type == EventType.DELETED
+                                }
                                 .map { it.resource }
 
                             if (events.isNotEmpty()) {
