@@ -94,7 +94,7 @@ object TestExecutorRegistry {
 
         @Volatile
         var suspended = true
-        private val loggingEnabled = System.getProperty("com.tsarev.fiotcher.tests.log", "true").toBoolean()
+        private val loggingEnabled = System.getProperty("com.tsarev.fiotcher.tests.log", "false").toBoolean()
         private val counter = AtomicLong(0)
         private val testThreadTasks = LinkedBlockingDeque<Runnable>()
         private var isShutdown = false

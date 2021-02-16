@@ -1,4 +1,4 @@
-package com.tsarev.fiotcher.internals
+package com.tsarev.fiotcher.internals.pool
 
 import com.tsarev.fiotcher.api.typedKey
 import com.tsarev.fiotcher.dflt.DefaultAggregatorPool

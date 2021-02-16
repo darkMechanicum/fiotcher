@@ -1,4 +1,4 @@
-package com.tsarev.fiotcher.internals
+package com.tsarev.fiotcher.internals.pool
 
 import com.tsarev.fiotcher.api.InitialEventsBunch
 import com.tsarev.fiotcher.api.TrackerAlreadyRegistered
@@ -336,16 +336,13 @@ class DefaultTrackerPoolTest {
             testAsync.assertEvent("registration start")
             testAsync.assertEvent("tracker initialized")
         }
-        testAsync.assertEvent("aggregator subscribed")
 
+        // Cancel the handle.
         startHandle.cancel(true)
+
+        // Aggregation subscription is interrupted, so no event will be passed to cancel it.
         registrationExecutor.activate {
             testAsync.assertEvent("tracker stopped")
-        }
-
-        trackerExecutor.activate {
-            testAsync.assertEvent("tracker start")
-            testAsync.assertEvent("tracker finished")
         }
 
         // Check that all there are no other events.

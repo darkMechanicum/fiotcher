@@ -10,14 +10,30 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    implementation("org.openjdk.jmh:jmh-core:1.19")
+// Additional example source set.
+sourceSets {
+    example {
+        kotlin {
+            compileClasspath += main.output
+            runtimeClasspath += main.output
+        }
+    }
+}
 
+dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+
+    exampleImplementation sourceSets.test.output
+    exampleImplementation 'org.junit.platform:junit-platform-console-standalone:1.7.1'
 }
 
 test {
     useJUnitPlatform()
+}
+
+task runExample(type: JavaExec) {
+    classpath = sourceSets.example.runtimeClasspath
+    main('com.tsarev.fiotcher.LiveJunitReportsParseKt')
 }
