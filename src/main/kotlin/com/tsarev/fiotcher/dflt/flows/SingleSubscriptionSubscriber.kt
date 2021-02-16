@@ -80,7 +80,6 @@ abstract class SingleSubscriptionSubscriber<ResourceT : Any> :
     abstract fun doOnNext(item: EventWithException<ResourceT>)
 
     override fun onError(throwable: Throwable) {
-        throwable.printStackTrace()
         doOnError(throwable)
     }
 

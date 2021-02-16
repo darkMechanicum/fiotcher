@@ -92,7 +92,6 @@ class Aggregator<ResourceT : Any>(
     }
 
     override fun onError(throwable: Throwable?) {
-        throwable?.printStackTrace()
         stop(true)
     }
 
