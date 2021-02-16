@@ -93,7 +93,10 @@ fun AsyncTestEvents.sendEvent(event: Any, timeoutMs: Long = defaultTestAsyncAsse
  * @param assertion an assertion to apply to found typed eevent
  * @param timeoutMs time allocated for receiving
  */
-inline fun <reified T> AsyncTestEvents.assertEvent(timeoutMs: Long = defaultTestAsyncAssertTimeoutMs, assertion: (T) -> Unit) {
+inline fun <reified T> AsyncTestEvents.assertEvent(
+    timeoutMs: Long = defaultTestAsyncAssertTimeoutMs,
+    assertion: (T) -> Unit
+) {
     when (val polled = poll(timeoutMs, TimeUnit.MILLISECONDS)) {
         is T -> assertion(polled)
         null -> Assertions.fail<Unit>("No event received")

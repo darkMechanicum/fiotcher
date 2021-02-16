@@ -24,9 +24,11 @@ class ErrorHandling {
     fun `handle error with single sync listener`(async: Boolean) {
         // --- Prepare ---
         val testExecutor = acquireExecutor()
-        val manager = DefaultFileProcessorManager(DefaultProcessor(
-            aggregatorExecutorService = testExecutor
-        ))
+        val manager = DefaultFileProcessorManager(
+            DefaultProcessor(
+                aggregatorExecutorService = testExecutor
+            )
+        )
         val key = "key"
         // Start tracking file.
         manager.startTrackingFile(tempDir, key, false)

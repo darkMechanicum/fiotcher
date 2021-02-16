@@ -79,7 +79,8 @@ class DefaultProcessor<WatchT : Any>(
         aggregatorPool
     ),
 
-    ) : Processor<WatchT>, Stoppable, TrackerPool<WatchT> by trackerPool, ListenerPool by listenerPool, WayStation by wayStation {
+    ) : Processor<WatchT>, Stoppable, TrackerPool<WatchT> by trackerPool, ListenerPool by listenerPool,
+    WayStation by wayStation {
 
     /**
      * Main processor brake.

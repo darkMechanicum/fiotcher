@@ -4,7 +4,6 @@ import com.tsarev.fiotcher.api.PoolIsStopped
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.api.TrackerAlreadyRegistered
 import java.util.concurrent.CompletionStage
-import java.util.concurrent.Executor
 
 
 /**

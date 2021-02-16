@@ -119,7 +119,8 @@ class FileSystemTrackerTest {
     @Test
     fun `test altering file in nested directory without debounce`() {
         // --- Prepare ---
-        val tracker = FileSystemTracker(debounceTimeoutMs = 0, recursive = true, trackCreations = true, trackChanges = true)
+        val tracker =
+            FileSystemTracker(debounceTimeoutMs = 0, recursive = true, trackCreations = true, trackChanges = true)
         val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
         val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
             override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
@@ -162,7 +163,8 @@ class FileSystemTrackerTest {
     @Test
     fun `test gracefully stop with debounce`() {
         // --- Prepare ---
-        val tracker = FileSystemTracker(debounceTimeoutMs = 400, recursive = true, trackCreations = true, trackChanges = true)
+        val tracker =
+            FileSystemTracker(debounceTimeoutMs = 400, recursive = true, trackCreations = true, trackChanges = true)
         val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
         val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
             override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
@@ -207,7 +209,8 @@ class FileSystemTrackerTest {
     @Test
     fun `test forcibly stop with debounce`() {
         // --- Prepare ---
-        val tracker = FileSystemTracker(debounceTimeoutMs = 400, recursive = true, trackCreations = true, trackChanges = true)
+        val tracker =
+            FileSystemTracker(debounceTimeoutMs = 400, recursive = true, trackCreations = true, trackChanges = true)
         val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
         val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
             override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
