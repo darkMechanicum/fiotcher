@@ -79,7 +79,7 @@ class DefaultTrackerPool<WatchT : Any>(
         // Sync on the pool to handle stopping properly.
         synchronized(this) {
             // Stop with exception if pool is stopped.
-            checkIsStopping { PoolIsStopped() }
+            validateIsStopping { PoolIsStopped() }
             // Try to register tracker.
             if (registeredTrackers.putIfAbsent(trackerKey, trackerInfo) != null)
                 throw TrackerAlreadyRegistered(resourceBundle, key)
@@ -151,7 +151,7 @@ class DefaultTrackerPool<WatchT : Any>(
     }
 
     override fun stopTracker(resourceBundle: WatchT, key: String, force: Boolean): CompletableFuture<*> {
-        checkIsStopping { PoolIsStopped() }
+        validateIsStopping { PoolIsStopped() }
         val trackerKey = resourceBundle to key
         val foundTracker = registeredTrackers[trackerKey]?.tracker
         return if (foundTracker != null) {
@@ -253,7 +253,7 @@ class DefaultTrackerPool<WatchT : Any>(
     /**
      * Throw exception if pool is stopping.
      */
-    private fun checkIsStopping(toThrow: () -> Throwable) {
+    private fun validateIsStopping(toThrow: () -> Throwable) {
         if (isStopped) {
             throw toThrow()
         }

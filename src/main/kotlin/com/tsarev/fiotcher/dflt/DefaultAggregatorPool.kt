@@ -42,11 +42,11 @@ class DefaultAggregatorPool(
     override fun <EventT : Any> getAggregator(key: KClassTypedKey<EventT>): Aggregator<EventT> {
         // Sync on the pool to handle stopping properly.
         synchronized(this) {
-            checkIsStopping { PoolIsStopped() }
+            validateIsStopping { PoolIsStopped() }
             val result = aggregators.computeIfAbsent(key) {
                 Aggregator<EventT>(queueExecutorService, stoppingExecutor, aggregatorMaxCapacity)
             }
-            return result as? Aggregator<EventT> ?: throw FiotcherException("Cant be here within normal operation")
+            return result as? Aggregator<EventT> ?: throw FiotcherException("Seems like somehow another type occupied map place.")
         }
     }
 
@@ -67,7 +67,7 @@ class DefaultAggregatorPool(
     /**
      * Throw exception if pool is stopping.
      */
-    private fun checkIsStopping(toThrow: () -> Throwable) {
+    private fun validateIsStopping(toThrow: () -> Throwable) {
         if (isStopped) throw toThrow()
     }
 
