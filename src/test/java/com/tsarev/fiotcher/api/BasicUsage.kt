@@ -5,6 +5,8 @@ import com.tsarev.fiotcher.dflt.DefaultProcessor
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.io.File
 
 class BasicUsage {
@@ -14,8 +16,9 @@ class BasicUsage {
 
     private val testAsync = AsyncTestEvents()
 
-    @Test
-    fun `basic single directory usage with defaults`() {
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun `basic single directory usage with defaults`(async: Boolean) {
         // --- Prepare ---
         val manager = DefaultFileProcessorManager(DefaultProcessor())
         val key = "key"
@@ -25,7 +28,7 @@ class BasicUsage {
 
         // Create simple listener.
         manager.listenForInitial(key)
-            .split { it }
+            .split(async = async) { it }
             // Send file name as event.
             .startListening { testAsync.sendEvent(it.name) }
 
