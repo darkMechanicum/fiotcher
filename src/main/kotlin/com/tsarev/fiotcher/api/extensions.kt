@@ -8,21 +8,31 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
 import java.util.*
+import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.parsers.SAXParser
 import javax.xml.parsers.SAXParserFactory
 import kotlin.collections.HashMap
 
+/**
+ * Handle changed files lines asynchronously.
+ * For details see [ProcessorManager.listenForInitial]
+ */
 fun FileProcessorManager.handleLines(key: String, linesAsync: Boolean = true, linedListener: (String) -> Unit) = listenForInitial(key)
     .delegate<File>(async = true) { bunch, publisher -> bunch.forEach { publisher(it) } }
     .chain { getStreamOrNull(it) }
     .split(async = linesAsync) { with(Scanner(it)) { mutableListOf<String>().also { while (hasNextLine()) it += nextLine() } } }
     .startListening { linedListener(it) }
 
+/**
+ * Handle changed files asynchronously.
+ * For details see [ProcessorManager.listenForInitial]
+ */
 fun FileProcessorManager.handleFiles(key: String, fileListener: (File) -> Unit) = listenForInitial(key)
     .delegate<File>(async = true) { bunch, publisher -> bunch.forEach { publisher(it) } }
     .startListening { fileListener(it) }
 
-val saxParser = SAXParserFactory.newInstance().newSAXParser()!!
+val defaultSaxParser = SAXParserFactory.newInstance().newSAXParser()!!
 
 data class SaxEvent(
     val element: String,
@@ -31,8 +41,19 @@ data class SaxEvent(
     val attributes: Map<String, String>,
 )
 
+/**
+ * Handle changed files asynchronously with SAX parser.
+ * For details see [ProcessorManager.listenForInitial].
+ *
+ * <i>Note</i>: when using this parser sax element event is
+ * send only when closing tag is reached. To alter this
+ * behaviour on could just copy/paste this extension.
+ *
+ * @param customSaxParser custom sax parser to use
+ */
 fun FileProcessorManager.handleSax(
     key: String,
+    customSaxParser: SAXParser? = null,
     parsingErrorHandler: ((SAXException) -> Unit)? = null,
     saxListener: (SaxEvent) -> Unit
 ) = listenForInitial(key)
@@ -43,7 +64,7 @@ fun FileProcessorManager.handleSax(
             .let { null } else it
     }) { stream, notifier ->
         val elements = HashMap<String, Deque<Map<String, String>>>()
-        saxParser.parse(stream, object : DefaultHandler() {
+        (customSaxParser ?: defaultSaxParser).parse(stream, object : DefaultHandler() {
             override fun startElement(uri: String?, localName: String?, qName: String?, attributes: Attributes) =
                 if (qName != null) elements.computeIfAbsent(qName) { LinkedList() }.addFirst(attributes.toMap())
                     .let {} else Unit
@@ -62,13 +83,26 @@ private fun Attributes.toMap() = mutableMapOf<String, String>().apply {
     }
 }
 
-val domParser = DocumentBuilderFactory.newInstance().newDocumentBuilder()!!
+val defaultDomParser = DocumentBuilderFactory.newInstance().newDocumentBuilder()!!
 
-fun FileProcessorManager.handleDom(key: String, domListener: (Document) -> Unit) = listenForInitial(key)
+/**
+ * Handle changed files asynchronously with SAX parser.
+ * For details see [ProcessorManager.listenForInitial]
+ *
+ * @param customDomParser custom sax parser to use
+ */
+fun FileProcessorManager.handleDom(
+    key: String,
+    customDomParser: DocumentBuilder? = null,
+    domListener: (Document) -> Unit
+) = listenForInitial(key)
     .delegate<File>(async = true) { bunch, publisher -> bunch.forEach { publisher(it) } }
     .chain { getStreamOrNull(it) }
-    .startListening { val document = domParser.parse(it); domListener(document) }
+    .startListening { val document = (customDomParser ?: defaultDomParser).parse(it); domListener(document) }
 
+/**
+ * Get stream from file, or null if no file is found.
+ */
 private fun getStreamOrNull(file: File) = try {
     FileInputStream(file)
 } catch (cause: IOException) {
