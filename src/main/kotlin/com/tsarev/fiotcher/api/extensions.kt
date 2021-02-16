@@ -38,7 +38,7 @@ fun FileProcessorManager.handleSax(
 ) = listenForInitial(key)
     .delegate<File>(async = true) { bunch, publisher -> bunch.forEach { publisher(it) } }
     .chain { getStreamOrNull(it) }
-    .delegate<SaxEvent>(async = true, handleErrors = {
+    .delegate<SaxEvent>(handleErrors = {
         if (it is SAXException) parsingErrorHandler?.let { it1 -> it1(it) }
             .let { null } else it
     }) { stream, notifier ->

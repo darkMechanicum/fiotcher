@@ -1,25 +1,46 @@
 # fiotcher
-A small resource scanning and handling processor library
+A small resource scanning and handling processor library.
 
-# TL;DR
-Basic usage can be found now at simpeTester.kt file.
+# Examples
+Usage examples can be found at:
+1. Basic usage - `/test/java/com/tsarev/fiotcher/api/BasicUsage.kt`
+2. Advanced usage - `/test/java/com/tsarev/fiotcher/api/BasicUsage.kt`
+3. Error handling usage - `/test/java/com/tsarev/fiotcher/api/BasicUsage.kt`
+4. Lifecycle control usage - `/test/java/com/tsarev/fiotcher/api/BasicUsage.kt`
 
-# Design notes
-Base design idea it to use publisher/subscriber pattern as much as posiible, since it adds various advantages for this kind of library, like:
-1. Asynchronous control of data flow.
-2. More precise control of data flow - we can "shutdown" data processing chain in the middle, for example.
-3. Aggregation posibilities - we can group same type events to share processing resources, or to guarantee batch processing.
-4. Isolation - we can isolate processing handlers (internal and user ones) by putting them in different threads, or more - in different queues.
-5. More precise resource control - by parametrizing used executors and queue sizes.
-6. Easy to use from user side - since we can hide subscribe/publish logic behind simple "chain like" handlers.
+# About
 
-Base API is divided into `Processor` and `FileProcessorManager`.
-First is low level chaining interface that exposes publish/subscribe possibilities to the user.
-Second is facade, that provides common tasks that are needed with siplier API.
+Fiothcer is a tracking/processing library build upon a subscriber publisher pattern.
 
-They can be divided into more interfaces in the future, but without significant 
-responsibilities change (for example, FileProcessorManager can become just ProcessorManager).
+The main idea is to simplify implementing various processors and trackers and glue the into single chain.
 
-# Future work notes
-Right now, there is no way to customize default implementations creation parameters, but it will change shortly,
-so most likely some new API like `ProcessorBuilder` or `ProcessorManagerBuilder` will arise.
+It allows to:
+1. Implement various trackers, just extending base `Tracker` class.
+2. Register various listeners, using `ProcessorManager` API, or lower level `Processor` API.
+3. Start and stop listeners and trackers, following `Stoppable` interface methods.
+
+Core tracker implementations are:
+1. `FileSystemTracker` - tracks file system changes within specified directory.
+
+Listeners are allowed to do asynchronous processing, see `ProcessorManager#ListenerBuilder` interface for details.
+
+Core listeners extensions are located at `extensions.kt`.
+They include:
+1. `handleSax` - parsing xml files with default java API SAX parser, each file asynchronously.
+2. `handleDom` - parsing xml files with default java API DOM parser, each file asynchronously.
+2. `handleLines` - parse text files line by line, asynchronously.
+2. `handleFiles` - handle raw files, asynchronously.
+
+# Current limitations
+There are some limitations at the moment, that can be eliminated within current design:
+1. Graceful stop can lost some events, when using custom aggregators via `ProcessorManager#ListenerBuilder#doAggregate` method,
+   because aggregators and listeners are stopped simultaneously.
+   Aggregators and listener chain dependency management can fix it.
+2. There can be infinite event loop, when using custom aggregators via `ProcessorManager#ListenerBuilder#doAggregate` method.
+   Aggregators and listener chain dependency management can fix it.
+3. Current `FileSystemTracker` implementation is based upon Java API `WatchService`, so if nested directories
+   are created fast, so file can be lost. This can be fixed with fallback method, scanning with 
+   plain BFS search at second thread and registering new directories in the watcher service.
+4. If an error occurs during listener processing, and it is not handled via error handler, so
+   it will be thrown and listener chain will stop. There is no way to detect this at the moment.
+   It can be fixed with changing `Stoppable` interface and adding more states rather than just `stopped`.

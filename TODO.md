@@ -1,28 +1,13 @@
-# Must do
-_Done:_
-1. Remove Flow API from outer API
-1. Class typed keys for an aggregator and listeners registry
-1. Error passing API
-1. Error passing implementation
-1. Remove types from events (for now, there isn't much use of them )
-1. Builder high level API instead of manager
-1. Builder API implementation
-1. Tests for DefaultAggregatorPool
-1. Tests for DefaultListenerPool
-1. Tests for DefaultTrackerPool
-   
-_Not done:_
-
-1. Tests for DefaultWayStation
-1. Tests for DefaultProcessor
-1. Tests for DefaultFileProcessorManager
-1. Error passing tests
-1. Builder API tests
-1. README rework
-1. Samples
-
 # Want do
 1. Multiple keys listener and tracker registration
-1. Aggregator on aggregator registration
-1. Additional trackers (like caching streams)
-1. Aggregator cycles checker
+2. Additional trackers (like single file tracker, or socket tracker, or network tracker)
+3. Separate processor from single tracking type.  
+4. Aggregator and listeners chain dependency meta information.
+5. Aggregator cycles checker
+6. More informative stopped state.
+7. More flexible SAX and DOM extensions (Possibly, dividing into separate class).
+8. More precise and deterministic test framework to test asynchronous flows.
+9. Create own publisher/subscriber implementation, rather than default Java API, since
+   some usage flaws were spotted.
+10. Performance tests.
+11. Concurrency stress tests with jcstress.
