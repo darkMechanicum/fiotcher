@@ -13,6 +13,11 @@ import java.util.concurrent.*
  */
 class DefaultProcessor<WatchT : Any>(
     /**
+     * Maximum capacity for aggregator queues.
+     */
+    aggregatorMaxCapacity: Int = Flow.defaultBufferSize() shl 1,
+
+    /**
      * Max queue capacity, used for transformers.
      */
     maxTransformerCapacity: Int = Flow.defaultBufferSize(),
@@ -49,11 +54,6 @@ class DefaultProcessor<WatchT : Any>(
      */
     // Separate pool for possible-blocking shutdown.
     private val stoppingExecutorService: ExecutorService = Executors.newCachedThreadPool(),
-
-    /**
-     * Maximum capacity for aggregator queues.
-     */
-    aggregatorMaxCapacity: Int = Flow.defaultBufferSize() shl 1,
 
     private val aggregatorPool: DefaultAggregatorPool = DefaultAggregatorPool(
         aggregatorMaxCapacity,
