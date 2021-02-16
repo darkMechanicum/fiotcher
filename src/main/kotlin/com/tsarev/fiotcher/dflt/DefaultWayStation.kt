@@ -84,23 +84,26 @@ class DefaultWayStation(
     ) = doSyncDelegateFrom(transformer, handleErrors)
 
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncChainFrom(
+        executor: Executor?,
         handleErrors: ((Throwable) -> Throwable?)?,
         transformer: (FromT) -> ToT?,
-    ) = asyncSplitFrom<FromT, ToT>(handleErrors) { listOf(transformer(it)) }
+    ) = asyncSplitFrom<FromT, ToT>(executor, handleErrors) { listOf(transformer(it)) }
 
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncSplitFrom(
+        executor: Executor?,
         handleErrors: ((Throwable) -> Throwable?)?,
         transformer: (FromT) -> Collection<ToT?>?,
-    ) = asyncDelegateFrom<FromT, ToT>(handleErrors) { event, publisher ->
+    ) = asyncDelegateFrom<FromT, ToT>(executor, handleErrors) { event, publisher ->
         val split = transformer(event)
         split?.filterNotNull()?.forEach { publisher(it) }
     }
 
     override fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncDelegateFrom(
+        executor: Executor?,
         handleErrors: ((Throwable) -> Throwable?)?,
         transformer: (FromT, (ToT) -> Unit) -> Unit,
     ) = doAsyncDelegateFrom(
-        executor = transformerExecutor,
+        executor = executor ?: transformerExecutor,
         stoppingExecutor = stoppingExecutor,
         maxCapacity = maxTransformerQueueCapacity,
         transformer = transformer,

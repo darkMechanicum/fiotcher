@@ -7,6 +7,7 @@ import com.tsarev.fiotcher.internal.flow.ChainingListener
 import com.tsarev.fiotcher.internal.flow.WayStation
 import java.io.File
 import java.util.concurrent.CompletionStage
+import java.util.concurrent.Executor
 import kotlin.reflect.KClass
 
 class DefaultFileProcessorManager(
@@ -49,12 +50,13 @@ class DefaultFileProcessorManager(
         override fun <NextT : Any> chain(
             handleErrors: ((Throwable) -> Throwable?)?,
             async: Boolean,
+            executor: Executor?,
             transformer: (EventT) -> NextT?
         ) = ListenerBuilderIntermediate<InitialT, NextT, EventT>(
             key, this
         ) {
             if (async) {
-                it.asyncChainFrom(transformer = transformer, handleErrors = handleErrors)
+                it.asyncChainFrom(transformer = transformer, handleErrors = handleErrors, executor = executor)
             } else {
                 it.syncChainFrom(transformer = transformer, handleErrors = handleErrors)
             }
@@ -63,12 +65,13 @@ class DefaultFileProcessorManager(
         override fun <NextT : Any> split(
             handleErrors: ((Throwable) -> Throwable?)?,
             async: Boolean,
+            executor: Executor?,
             transformer: (EventT) -> Collection<NextT?>?
         ) = ListenerBuilderIntermediate<InitialT, NextT, EventT>(
             key, this
         ) {
             if (async) {
-                it.asyncSplitFrom(transformer = transformer, handleErrors = handleErrors)
+                it.asyncSplitFrom(transformer = transformer, handleErrors = handleErrors, executor = executor)
             } else {
                 it.syncSplitFrom(transformer = transformer, handleErrors = handleErrors)
             }
@@ -77,19 +80,19 @@ class DefaultFileProcessorManager(
         override fun <NextT : Any> delegate(
             handleErrors: ((Throwable) -> Throwable?)?,
             async: Boolean,
+            executor: Executor?,
             transformer: (EventT, (NextT) -> Unit) -> Unit
         ) = ListenerBuilderIntermediate<InitialT, NextT, EventT>(
             key, this
         ) {
             if (async) {
-                it.asyncDelegateFrom(transformer = transformer, handleErrors = handleErrors)
+                it.asyncDelegateFrom(transformer = transformer, handleErrors = handleErrors, executor = executor)
             } else {
                 it.syncDelegateFrom(transformer = transformer, handleErrors = handleErrors)
             }
         }
 
         override fun startListening(
-            async: Boolean,
             handleErrors: ((Throwable) -> Throwable?)?,
             listener: (EventT) -> Unit
         ): Stoppable {

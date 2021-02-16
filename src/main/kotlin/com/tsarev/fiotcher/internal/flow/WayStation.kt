@@ -1,6 +1,7 @@
 package com.tsarev.fiotcher.internal.flow
 
 import com.tsarev.fiotcher.api.KClassTypedKey
+import java.util.concurrent.Executor
 
 /**
  * This is an intermediate point, where we may split, group and make asynchronous (or may not)
@@ -66,6 +67,7 @@ interface WayStation {
      * @param transformer event transforming logic
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncChainFrom(
+        executor: Executor?,
         handleErrors: ((Throwable) -> Throwable?)? = null,
         transformer: (FromT) -> ToT?,
     ): ChainingListener<FromT>
@@ -77,6 +79,7 @@ interface WayStation {
      * @param transformer event to collection transforming logic
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncSplitFrom(
+        executor: Executor?,
         handleErrors: ((Throwable) -> Throwable?)? = null,
         transformer: (FromT) -> Collection<ToT?>?,
     ): ChainingListener<FromT>
@@ -88,6 +91,7 @@ interface WayStation {
      * thus allowing to make a number of publishing on its desire.
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncDelegateFrom(
+        executor: Executor?,
         handleErrors: ((Throwable) -> Throwable?)? = null,
         transformer: (FromT, (ToT) -> Unit) -> Unit,
     ): ChainingListener<FromT>
