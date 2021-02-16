@@ -296,6 +296,7 @@ class DefaultTrackerPoolTest {
     }
 
     @Test
+    // TODO This test is blinking sometimes. Fix when captured.
     fun `asynchronous middle cancel tracker start`() {
         // --- Prepare ---
         val aggregatorExecutor = acquireExecutor("aggregate", testAsync::sendEvent)
