@@ -87,6 +87,7 @@ class DelegatingAsyncTransformer<FromT : Any, ToT : Any, ListenerT>(
      * Spin loop that all events are processed.
      */
     // TODO What can we do with this spin loop?
+    // TODO Can't remove it simply within current Publish/Subscribe implementation, see TODO.md.
     private fun loopForEventsCompletion(force: Boolean): CompletableFuture<*> =
         if (force)
             CompletableFuture.completedFuture(Unit)

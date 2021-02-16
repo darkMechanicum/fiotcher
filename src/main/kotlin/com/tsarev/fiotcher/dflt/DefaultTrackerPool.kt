@@ -39,7 +39,7 @@ class DefaultTrackerPool<WatchT : Any>(
      */
     private val mockTracker = object : Tracker<WatchT>() {
         override val isStopped = true
-        override fun stop(force: Boolean) = CompletableFuture.completedFuture(Unit)
+        override fun doStop(force: Boolean) = CompletableFuture.completedFuture(Unit)
         override fun run() = run { }
         override fun doInit(executor: Executor) =
             object : Flow.Publisher<EventWithException<InitialEventsBunch<WatchT>>> {
@@ -190,7 +190,7 @@ class DefaultTrackerPool<WatchT : Any>(
             override val isStopped: Boolean
                 get() = this@DefaultTrackerPool.isStopped || tracker.isStopped
 
-            override fun stop(force: Boolean) =
+            override fun doStop(force: Boolean) =
                 if (!this@DefaultTrackerPool.isStopped) {
                     doStopTracker(resourceBundle, key, false, tracker)
                 } else {

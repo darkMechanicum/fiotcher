@@ -146,6 +146,7 @@ class FileSystemTrackerTest {
         // Test file in the nested directories creation.
         val someDir = tempDir.createDirectory("someDir")
         // TODO This pause signalises that we also must do manual registration of file changes and directory changes.
+        // TODO See README limitations.
         Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.
         val someInnerDir = someDir.createDirectory("someDir")
         Thread.sleep(100) // Small pause to allow filesystem watcher to give away events.

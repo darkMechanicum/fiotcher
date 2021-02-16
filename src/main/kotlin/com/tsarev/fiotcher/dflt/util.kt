@@ -11,6 +11,11 @@ typealias Brake<T> = AtomicReference<CompletableFuture<T>?>
 val <T> Brake<T>.isPushed get() = this.get() != null
 
 /**
+ * Reset the brake.
+ */
+fun <T> Brake<T>.reset() = this.set(null)
+
+/**
  * Push the brake once with [CompletableFuture], if it was not pushed.
  */
 inline fun <T> Brake<T>.push(block: (CompletableFuture<T>) -> Unit = {}): CompletableFuture<T> {

@@ -45,7 +45,7 @@ class DefaultTrackerPoolTest {
             override fun run() = testSync.sendEvent("tracker started")
             private val brake = Brake<Unit>()
             override val isStopped = brake.isPushed
-            override fun stop(force: Boolean) = brake.push { testSync.sendEvent("tracker stopped"); it.complete(Unit) }
+            override fun doStop(force: Boolean) = brake.push { testSync.sendEvent("tracker stopped"); it.complete(Unit) }
             override fun doInit(executor: Executor): Flow.Publisher<EventWithException<InitialEventsBunch<String>>> {
                 testSync.sendEvent("tracker initialized")
                 return Flow.Publisher<EventWithException<InitialEventsBunch<String>>> { testSync.sendEvent("aggregator subscribed") }
@@ -85,7 +85,7 @@ class DefaultTrackerPoolTest {
             override fun run() = testSync.sendEvent("tracker started")
             private val brake = Brake<Unit>()
             override val isStopped = brake.isPushed
-            override fun stop(force: Boolean) = brake.push { testSync.sendEvent("tracker stopped"); it.complete(Unit) }
+            override fun doStop(force: Boolean) = brake.push { testSync.sendEvent("tracker stopped"); it.complete(Unit) }
             override fun doInit(executor: Executor): Flow.Publisher<EventWithException<InitialEventsBunch<String>>> {
                 testSync.sendEvent("tracker initialized")
                 return Flow.Publisher<EventWithException<InitialEventsBunch<String>>> { testSync.sendEvent("aggregator subscribed") }
@@ -118,7 +118,7 @@ class DefaultTrackerPoolTest {
             override fun run() = testSync.sendEvent("tracker started")
             private val brake = Brake<Unit>()
             override val isStopped = brake.isPushed
-            override fun stop(force: Boolean) = brake.push { testSync.sendEvent("tracker stopped"); it.complete(Unit) }
+            override fun doStop(force: Boolean) = brake.push { testSync.sendEvent("tracker stopped"); it.complete(Unit) }
             override fun doInit(executor: Executor): Flow.Publisher<EventWithException<InitialEventsBunch<String>>> {
                 testSync.sendEvent("tracker initialized")
                 return Flow.Publisher<EventWithException<InitialEventsBunch<String>>> { testSync.sendEvent("aggregator subscribed") }
@@ -167,7 +167,7 @@ class DefaultTrackerPoolTest {
             private val brake = Brake<Unit>()
             override val isStopped = brake.isPushed
             lateinit var subscriber: Flow.Subscriber<in EventWithException<InitialEventsBunch<String>>>
-            override fun stop(force: Boolean) = brake.push {
+            override fun doStop(force: Boolean) = brake.push {
                 thread(start = true) { testAsync.sendEvent("tracker stopped") }; it.complete(Unit)
             }
 
@@ -265,7 +265,7 @@ class DefaultTrackerPoolTest {
             override fun run() = testAsync.sendEvent("tracker started")
             private val brake = Brake<Unit>()
             override val isStopped = brake.isPushed
-            override fun stop(force: Boolean) = brake.push {
+            override fun doStop(force: Boolean) = brake.push {
                 thread(start = true) { testAsync.sendEvent("tracker stopped") }; it.complete(Unit)
             }
 
@@ -318,7 +318,7 @@ class DefaultTrackerPoolTest {
             override fun run() = testAsync.sendEvent("tracker started")
             private val brake = Brake<Unit>()
             override val isStopped = brake.isPushed
-            override fun stop(force: Boolean) = brake.push {
+            override fun doStop(force: Boolean) = brake.push {
                 thread(start = true) { testAsync.sendEvent("tracker stopped") }; it.complete(Unit)
             }
 
