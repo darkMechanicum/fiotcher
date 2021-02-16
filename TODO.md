@@ -11,3 +11,4 @@
    some usage flaws were spotted.
 10. Performance tests.
 11. Concurrency stress tests with jcstress.
+12. Test events aggregation more aggressively.
