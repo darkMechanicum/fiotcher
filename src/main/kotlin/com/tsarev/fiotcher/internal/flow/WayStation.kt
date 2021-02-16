@@ -67,7 +67,7 @@ interface WayStation {
      * @param transformer event transforming logic
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncChainFrom(
-        executor: Executor?,
+        executor: Executor? = null,
         handleErrors: ((Throwable) -> Throwable?)? = null,
         transformer: (FromT) -> ToT?,
     ): ChainingListener<FromT>
@@ -79,7 +79,7 @@ interface WayStation {
      * @param transformer event to collection transforming logic
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncSplitFrom(
-        executor: Executor?,
+        executor: Executor? = null,
         handleErrors: ((Throwable) -> Throwable?)? = null,
         transformer: (FromT) -> Collection<ToT?>?,
     ): ChainingListener<FromT>
@@ -91,7 +91,7 @@ interface WayStation {
      * thus allowing to make a number of publishing on its desire.
      */
     fun <FromT : Any, ToT : Any> ChainingListener<ToT>.asyncDelegateFrom(
-        executor: Executor?,
+        executor: Executor? = null,
         handleErrors: ((Throwable) -> Throwable?)? = null,
         transformer: (FromT, (ToT) -> Unit) -> Unit,
     ): ChainingListener<FromT>
