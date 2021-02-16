@@ -14,6 +14,9 @@ Usage examples can be found at:
 Also, there is self parse test results example in module `example` 
 (`/src/example/kotlin/com/tsarev/fiotcher/liveJunitReportsParse.kt`).
 
+*Note*: For IntelliJ users here are two saved run configurations, first 
+to build, and second to launch self parse example.
+
 # About
 
 Fiothcer is a tracking/processing library build upon a subscriber publisher pattern.
