@@ -12,10 +12,10 @@ import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.parsers.SAXParserFactory
 import kotlin.collections.HashMap
 
-fun FileProcessorManager.handleLines(key: String, linedListener: (String) -> Unit) = listenForInitial(key)
+fun FileProcessorManager.handleLines(key: String, linesAsync: Boolean = true, linedListener: (String) -> Unit) = listenForInitial(key)
     .delegate<File>(async = true) { bunch, publisher -> bunch.forEach { publisher(it) } }
     .chain { getStreamOrNull(it) }
-    .split(async = true) { with(Scanner(it)) { mutableListOf<String>().also { while (hasNextLine()) it += nextLine() } } }
+    .split(async = linesAsync) { with(Scanner(it)) { mutableListOf<String>().also { while (hasNextLine()) it += nextLine() } } }
     .startListening { linedListener(it) }
 
 fun FileProcessorManager.handleFiles(key: String, fileListener: (File) -> Unit) = listenForInitial(key)

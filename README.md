@@ -34,8 +34,8 @@ Core listeners extensions are located at `extensions.kt`.
 They include:
 1. `handleSax` - parsing xml files with default java API SAX parser, each file asynchronously.
 2. `handleDom` - parsing xml files with default java API DOM parser, each file asynchronously.
-2. `handleLines` - parse text files line by line, asynchronously.
-2. `handleFiles` - handle raw files, asynchronously.
+2. `handleLines` - parse text files line by line, each line asynchronously (possible), each file asynchronously.
+2. `handleFiles` - handle raw files, each file asynchronously.
 
 # Current limitations
 There are some limitations at the moment, that can be eliminated within current design:
