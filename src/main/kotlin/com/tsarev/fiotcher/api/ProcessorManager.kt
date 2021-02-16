@@ -83,7 +83,7 @@ interface ProcessorManager<InitialEventT : Any> {
          *
          * @param key new event type
          * @param handleErrors error handling function to process errors or to pass them down the chain.
-         *        If exception is thrown inside tha handler, than listener chain will stop.
+         *        If exception is thrown inside the handler, than listener chain will stop.
          */
         fun doAggregate(
             handleErrors: ((Throwable) -> Throwable?)? = null,
@@ -95,7 +95,7 @@ interface ProcessorManager<InitialEventT : Any> {
          *
          * @param transformer event transforming logic
          * @param handleErrors error handling function to process errors or to pass them down the chain.
-         *        If exception is thrown inside tha handler, than listener chain will stop.
+         *        If exception is thrown inside the handler, than listener chain will stop.
          * @param async if event should be processed in new queue asynchronously
          * @param executor executor to use for async processing. only make sense when [async] is true
          */
@@ -111,7 +111,7 @@ interface ProcessorManager<InitialEventT : Any> {
          *
          * @param transformer event to collection transforming logic
          * @param handleErrors error handling function to process errors or to pass them down the chain.
-         *        If exception is thrown inside tha handler, than listener chain will stop.
+         *        If exception is thrown inside the handler, than listener chain will stop.
          * @param async if event should be processed in new queue asynchronously
          * @param executor executor to use for async processing. only make sense when [async] is true
          */
@@ -128,7 +128,7 @@ interface ProcessorManager<InitialEventT : Any> {
          * @transformer a function that accepts [EventT] event and function to publish it further,
          * thus allowing to make a number of publishing on its desire.
          * @param handleErrors error handling function to process errors or to pass them down the chain.
-         *        If exception is thrown inside tha handler, than listener chain will stop.
+         *        If exception is thrown inside the handler, than listener chain will stop.
          * @param async if event should be processed in new queue asynchronously
          * @param executor executor to use for async processing. only make sense when [async] is true
          */
@@ -143,7 +143,7 @@ interface ProcessorManager<InitialEventT : Any> {
          * Actual listening start.
          *
          * @param handleErrors error handling function to process errors or to pass them down the chain.
-         *        If exception is thrown inside tha handler, than listener chain will stop.
+         *        If exception is thrown inside the handler, than listener chain will stop.
          * @param listener event processing logic.
          */
         fun startListening(
