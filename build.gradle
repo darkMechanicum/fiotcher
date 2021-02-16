@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id "org.jetbrains.kotlin.jvm" version "1.4.21"
+    id 'jacoco'
 }
 
 group 'com.tsarev'
@@ -8,6 +9,13 @@ version '2.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
+    // For jacoco snapshot version.
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
+}
+
+// Snapshot jacoco to support 15 java.
+jacoco {
+    toolVersion = '0.8.7-SNAPSHOT'
 }
 
 // Additional example source set.
@@ -31,6 +39,14 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        html.destination file("${buildDir}/jacocoHtml")
+    }
 }
 
 task runExample(type: JavaExec) {

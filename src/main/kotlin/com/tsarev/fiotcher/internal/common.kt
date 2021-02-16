@@ -14,5 +14,5 @@ data class EventWithException<EventT : Any>(
     fun ifFailed(block: (Throwable) -> Unit) = if (exception != null) block(exception) else Unit
 }
 
-fun <T : Any> T.asSuccess() = EventWithException(this, null)
-fun <T : Any> Throwable.asFailure() = EventWithException<T>(null, this)
+internal fun <T : Any> T.asSuccess() = EventWithException(this, null)
+internal fun <T : Any> Throwable.asFailure() = EventWithException<T>(null, this)
