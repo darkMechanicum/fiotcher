@@ -8,6 +8,9 @@ Usage examples can be found at:
 3. Error handling usage - `/test/java/com/tsarev/fiotcher/api/BasicUsage.kt`
 4. Lifecycle control usage - `/test/java/com/tsarev/fiotcher/api/BasicUsage.kt`
 
+Also, there is self parse test results example in module `example` 
+(`/src/example/kotlin/com/tsarev/fiotcher/liveJunitReportsParse.kt`).
+
 # About
 
 Fiothcer is a tracking/processing library build upon a subscriber publisher pattern.
