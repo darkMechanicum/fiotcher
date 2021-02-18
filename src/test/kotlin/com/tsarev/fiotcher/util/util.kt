@@ -1,5 +1,6 @@
 package com.tsarev.fiotcher.util
 
+import com.tsarev.fiotcher.dflt.isWindows
 import org.junit.jupiter.api.Assertions
 import java.io.File
 import java.io.PrintWriter
@@ -74,7 +75,7 @@ fun SyncTestEvents.assertNoEvent() {
  */
 typealias AsyncTestEvents = SynchronousQueue<Any>
 
-const val defaultTestAsyncAssertTimeoutMs = 500L
+val defaultTestAsyncAssertTimeoutMs = if (isWindows) 2000L else 500L
 
 /**
  * Send event to the queue and await for the assertion on that event.
@@ -151,3 +152,8 @@ fun File.createDirectory(name: String): File {
         if (!exists()) mkdirs()
     }
 }
+
+/**
+ * Amout of time in ms to wait, to allow filesystem and watcher to catch changes.
+ */
+val fileSystemPause = if (isWindows) 500L else 200L

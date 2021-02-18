@@ -38,7 +38,11 @@ dependencies {
 }
 
 test {
-    useJUnitPlatform()
+    useJUnitPlatform() {
+        if (System.getProperty("os.name").startsWith("Windows")) {
+            excludeTags("non-windows")
+        }
+    }
     finalizedBy jacocoTestReport
 }
 

@@ -107,7 +107,7 @@ class BasicUsage {
         // Create inner directory.
         val innedDirectory = tempDir.createDirectory("inner")
         // Small pause to give filesystem some time.
-        Thread.sleep(200)
+        Thread.sleep(fileSystemPause)
         // Create first file.
         innedDirectory.createFile("newFile.txt") {
             """

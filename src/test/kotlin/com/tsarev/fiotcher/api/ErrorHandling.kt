@@ -49,14 +49,14 @@ class ErrorHandling {
         // Create and delete first file, so event will be sent on non existing file, while executor is suspended.
         val file = tempDir.createFile("newFile.txt") { "first" }
         // Small pause to give filesystem some time.
-        Thread.sleep(200)
+        Thread.sleep(fileSystemPause)
         file.delete()
 
         // Activate executor.
         testExecutor.activate {
             // Check that event was passed.
             testAsync.assertEvent<FileNotFoundException> {
-                Assertions.assertEquals("${file.absolutePath} (No such file or directory)", it.message)
+                Assertions.assertTrue(it.message?.contains(file.absolutePath) ?: false)
             }
         }
     }

@@ -38,3 +38,8 @@ inline fun <T> Brake<T>.pushCompleted(completeValue: T, block: (CompletableFutur
     }
     return get()!!
 }
+
+/**
+ * Check if OS is windows.
+ */
+val isWindows = System.getProperty("os.name", "null").startsWith("Windows")

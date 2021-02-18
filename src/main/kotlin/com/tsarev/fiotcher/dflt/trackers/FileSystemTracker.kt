@@ -2,6 +2,7 @@ package com.tsarev.fiotcher.dflt.trackers
 
 import com.tsarev.fiotcher.api.InitialEventsBunch
 import com.tsarev.fiotcher.dflt.Brake
+import com.tsarev.fiotcher.dflt.isWindows
 import com.tsarev.fiotcher.dflt.push
 import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.asSuccess
@@ -33,7 +34,7 @@ class FileSystemTracker(
      *
      * Turns off debounce if less or equal zero.
      */
-    private val debounceTimeoutMs: Long = 20,
+    private val debounceTimeoutMs: Long = if (isWindows) 200 else 20,
 
     /**
      * If should track directories recursively.
@@ -48,7 +49,7 @@ class FileSystemTracker(
     /**
      * If should track creations.
      */
-    private val trackCreations: Boolean = false,
+    private val trackCreations: Boolean = isWindows,
 
     /**
      * If should track deletions.
@@ -151,6 +152,7 @@ class FileSystemTracker(
                                             trackDeletions && it.type == EventType.DELETED
                                 }
                                 .map { it.resource }
+                                .toSet()
 
                             if (events.isNotEmpty()) {
                                 publisher.submit(InitialEventsBunch(events).asSuccess())
