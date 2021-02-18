@@ -111,10 +111,10 @@ inline fun <reified T> AsyncTestEvents.assertEvent(
  * @param event event to compare with
  * @param timeoutMs time allocated for receiving
  */
-fun AsyncTestEvents.assertEvent(event: Any, timeoutMs: Long = defaultTestAsyncAssertTimeoutMs) {
+fun AsyncTestEvents.assertEvent(event: Any, required: Boolean = true, timeoutMs: Long = defaultTestAsyncAssertTimeoutMs) {
     val polled = poll(timeoutMs, TimeUnit.MILLISECONDS)
-    if (polled == null) Assertions.fail<Unit>("No event [$event] received")
-    else Assertions.assertEquals(event, polled) { "Received not expected event" }
+    if (required && polled == null) Assertions.fail<Unit>("No event [$event] received")
+    else if (required) Assertions.assertEquals(event, polled) { "Received not expected event" }
 }
 
 /**

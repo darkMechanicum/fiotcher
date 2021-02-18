@@ -225,7 +225,7 @@ class AsynchronousDelegatingAsyncTransformerTest {
 
         // Test listener inner publisher closing.
         listenerExecutor.activate {
-            testAsync.assertEvent("listener executor start", 1000L)
+            testAsync.assertEvent("listener executor start", timeoutMs = 1000L)
             testAsync.assertEvent("listener executor finished")
         }
 

@@ -115,7 +115,10 @@ class LifecycleUsage {
 
             // Check for queues stopping.
             testAsync.assertEvent("queue start")
-            testAsync.assertEvent("queue finished")
+            // Artificial event can be discarded, since executor stop can shot
+            // first (but not before queue stopping). It's discarding is allowed, but
+            // no other event expected here.
+            testAsync.assertEvent("queue finished", required = false)
 
             // Await for stopping.
             handle.toCompletableFuture().get()
