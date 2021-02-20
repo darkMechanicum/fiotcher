@@ -315,11 +315,11 @@ class DefaultTrackerPoolTest {
             aggregatorPool
         )
         val testTracker = object : Tracker<String>() {
-            override fun run() = testAsync.sendEvent("tracker started")
+            override fun run() = if (!isStopped) testAsync.sendEvent("tracker started") else Unit
             private val brake = Brake<Unit>()
             override val isStopped = brake.isPushed
             override fun doStop(force: Boolean) = brake.push {
-                thread(start = true) { testAsync.sendEvent("tracker stopped") }; it.complete(Unit)
+                it.complete(Unit); testAsync.sendEvent("tracker stopped")
             }
 
             override fun doInit(executor: Executor): Flow.Publisher<EventWithException<InitialEventsBunch<String>>> {
@@ -343,7 +343,10 @@ class DefaultTrackerPoolTest {
 
         // Aggregation subscription is interrupted, so no event will be passed to cancel it.
         registrationExecutor.activate {
-            testAsync.assertEvent("tracker stopped")
+            testAsync.assertEvents(
+                "aggregator subscribed" required false, // Subscription event can or cannot be in time.
+                "tracker stopped" required true // Stop event must occur.
+            )
         }
 
         // Check that all there are no other events.

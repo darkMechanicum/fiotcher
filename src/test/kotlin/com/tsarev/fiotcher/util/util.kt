@@ -118,6 +118,51 @@ fun AsyncTestEvents.assertEvent(event: Any, required: Boolean = true, timeoutMs:
 }
 
 /**
+ * Convenient alias.
+ */
+internal infix fun String.required(isRequired: Boolean) = this to isRequired
+
+/**
+ * Get events from the queue and assert it equality with specified [events].
+ * Second value in pair is required flag.
+ *
+ * @param events events to compare with
+ * @param timeoutMs time allocated for receiving
+ */
+fun AsyncTestEvents.assertEvents(vararg events: Pair<Any, Boolean>, timeoutMs: Long = defaultTestAsyncAssertTimeoutMs) {
+    var unprocessedPolled: Any? = null
+    val requiredIterator = events.iterator()
+    outer@while (requiredIterator.hasNext()) {
+        val polled = poll(timeoutMs, TimeUnit.MILLISECONDS)
+        unprocessedPolled = polled
+        while (requiredIterator.hasNext()) {
+            // Get next requirement.
+            val (event, required) = requiredIterator.next()
+            // If polled event is not required and polled is not equal to event, than try next event from list.
+            if (!required && polled != null && polled != event) continue
+            // If event is required than assert it.
+            if (required && polled == null) {
+                Assertions.fail<Unit>("No event [$event] received")
+            } else if (required) {
+                Assertions.assertEquals(event, polled) { "Received not expected event" }
+                unprocessedPolled = null
+                continue@outer
+            }
+            // Free unprocessed if polled equals event.
+            if (event == polled) unprocessedPolled = null
+            // We are here if (polled is null or polled equals event) and event is not required.
+            // So we can go to the outer loop to wait for other events.
+            continue@outer
+        }
+    }
+    // If unprocessed is nit null, so there was chain of non required events and non of them matched.
+    // So, we must fail.
+    if (unprocessedPolled != null) {
+        Assertions.fail<Unit>("No event [$unprocessedPolled] match passed [${events.map { it.first }}]")
+    }
+}
+
+/**
  * Assert there are no events in the queue.
  *
  * @param timeoutMs time allocated for waiting extra events.

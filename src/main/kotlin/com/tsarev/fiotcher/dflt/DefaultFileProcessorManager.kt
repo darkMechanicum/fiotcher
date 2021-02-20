@@ -2,6 +2,7 @@ package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.*
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
+import com.tsarev.fiotcher.dflt.trackers.NaiveFileTracker
 import com.tsarev.fiotcher.internal.Processor
 import com.tsarev.fiotcher.internal.flow.ChainingListener
 import com.tsarev.fiotcher.internal.flow.WayStation
@@ -15,7 +16,7 @@ class DefaultFileProcessorManager(
 ) : FileProcessorManager, Stoppable by processor {
 
     override fun startTrackingFile(path: File, key: String, recursively: Boolean): CompletionStage<out Stoppable> {
-        val fileSystemTracker = FileSystemTracker(recursive = recursively)
+        val fileSystemTracker = NaiveFileTracker()
         return processor.startTracker(path, fileSystemTracker, key)
     }
 

@@ -92,6 +92,7 @@ class DefaultTrackerPool<WatchT : Any>(
             if (this@DefaultTrackerPool.isStopped) return@submit
 
             val wrappedTracker: Tracker<WatchT>?
+            val currentThread = Thread.currentThread()
             try {
                 // We don't need additional type info, since there can only be one tracker by string key.
                 val asTyped = key.typedKey<InitialEventsBunch<WatchT>>()
@@ -102,20 +103,21 @@ class DefaultTrackerPool<WatchT : Any>(
                 trackerPublisher.subscribe(targetAggregator)
 
                 // Start tracker. From now he is treated like started.
-                val handle = trackerExecutor.submit(tracker)
-                wrappedTracker = createTrackerWrapper(resourceBundle, key, tracker)
-                val newTracker = registeredTrackers.computeIfPresent(trackerKey) { _, old ->
-                    // Check if we are replacing ourselves.
-                    if (tracker === old.tracker) trackerInfo.copy(trackerTaskHandle = handle) else old
+                if (!currentThread.isInterrupted) {
+                    val handle = trackerExecutor.submit(tracker)
+                    wrappedTracker = createTrackerWrapper(resourceBundle, key, tracker)
+                    val newTracker = registeredTrackers.computeIfPresent(trackerKey) { _, old ->
+                        // Check if we are replacing ourselves.
+                        if (tracker === old.tracker) trackerInfo.copy(trackerTaskHandle = handle) else old
+                    }
+
+                    // If some other tracker accidentally was in the map, so cancel tracker work.
+                    if (newTracker?.tracker !== tracker) handle.cancel(true)
+                    resultFuture.complete(wrappedTracker)
                 }
 
-                // If some other tracker accidentally was in the map, so cancel tracker work.
-                if (newTracker?.tracker !== tracker) handle.cancel(true)
-
-                resultFuture.complete(wrappedTracker)
-
                 // If submission handle had interrupted us, so stop tracker.
-                if (Thread.currentThread().isInterrupted) {
+                if (currentThread.isInterrupted) {
                     doStopTracker(resourceBundle, key, true, tracker)
                 }
             } catch (interrupt: InterruptedException) {
@@ -123,7 +125,7 @@ class DefaultTrackerPool<WatchT : Any>(
                 try {
                     doStopTracker(resourceBundle, key, true, tracker)
                 } finally {
-                    Thread.currentThread().interrupt()
+                    currentThread.interrupt()
                 }
             } catch (cause: Throwable) {
                 try {
