@@ -55,5 +55,6 @@ There are some limitations at the moment, that can be eliminated within current 
 4. If an error occurs during listener processing, and it is not handled via error handler, so
    it will be thrown and listener chain will stop. There is no way to detect this at the moment.
    It can be fixed with changing `Stoppable` interface and adding more states rather than just `stopped`.
+5. At now Trackers are all single threaded. This can be fixed by hiding asynchronous processing in trackers themselves.
    
 _A treasure lies beneath this endless abyss of code history_

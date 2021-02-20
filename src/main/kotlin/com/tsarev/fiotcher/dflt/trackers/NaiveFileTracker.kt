@@ -26,7 +26,12 @@ class NaiveFileTracker(
     /**
      * If nested directories should be processed.
      */
-    private val recursive: Boolean = true
+    private val recursive: Boolean = true,
+
+    /**
+     * An amount of time to believe, that file is changed.
+     */
+    private val doesChangeThresholdMillis: Long = 100,
 
 ) : Tracker<File>() {
 
@@ -107,7 +112,9 @@ class NaiveFileTracker(
             val dirStamp = discovered.computeIfAbsent(file) { StampWithDirectoryFlag(AtomicLong(0), file.isDirectory) }
             val lastModified = file.lastModified()
             val now = System.currentTimeMillis()
-            val lastWatched = dirStamp.stamp.updateAndGet { previous -> if (previous < lastModified) now else previous }
+            val lastWatched = dirStamp.stamp.updateAndGet {
+                previous -> if (previous + doesChangeThresholdMillis < lastModified) now else previous
+            }
             if (lastWatched == now) {
                 if (!dirStamp.isDirectory && !isForced) {
                     // Exists check must be the last, since file can be deleted and
