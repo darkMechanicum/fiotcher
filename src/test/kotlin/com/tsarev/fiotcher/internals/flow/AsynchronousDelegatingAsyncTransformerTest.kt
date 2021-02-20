@@ -237,6 +237,101 @@ class AsynchronousDelegatingAsyncTransformerTest {
         testAsync.assertNoEvent()
     }
 
+    /**
+     * This test is need for case, when event is not passed away
+     * immediately in async transform function, but takes some time to process.
+     */
+    @Test
+    fun `asynchronous graceful stop after submit with long event processing`() {
+        // --- Prepare ---
+        val chained = CommonListener<String>(
+            { testAsync.sendEvent("chained $it") }
+        )
+        val listenerExecutor = acquireExecutor(
+            name = "listener executor",
+            { testAsync.sendEvent("listener executor start") },
+            { testAsync.sendEvent("listener executor finished") }
+        )
+        val publisherExecutor = acquireExecutor(
+            name = "publisher executor",
+            { testAsync.sendEvent("publisher executor start") },
+            { testAsync.sendEvent("publisher executor finished") }
+        )
+        val stoppingExecutor = acquireExecutor(
+            name = "stopping executor",
+            { testAsync.sendEvent("stopping executor start") },
+            { testAsync.sendEvent("stopping executor finished") }
+        )
+        val publisher = SubmissionPublisher<EventWithException<String>>(publisherExecutor, 10)
+
+        // --- Test ---
+        // Start listener.
+        val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
+            executor = listenerExecutor,
+            maxCapacity = 10,
+            chained = chained,
+            stoppingExecutor = stoppingExecutor,
+            transform = { it, publish -> testAsync.sendEvent(it); Thread.sleep(defaultTestAsyncAssertTimeoutMs * 2); publish(it) },
+            handleErrors = null,
+        )
+
+        // Test chained subscription.
+        listenerExecutor.activate {
+            testAsync.assertEvent("listener executor start")
+            testAsync.assertEvent("listener executor finished")
+        }
+
+        // Test listener subscription.
+        publisherExecutor.activate {
+            publisher.subscribe(listener)
+            testAsync.assertEvent("publisher executor start")
+            testAsync.assertEvent("publisher executor finished")
+        }
+
+        // Test submit.
+        // Allow only publisher executor, imitating `not processed event`.
+        publisherExecutor.activate {
+            publisher.submit("one".asSuccess())
+            testAsync.assertEvent("publisher executor start")
+            // Stop at event processing.
+            testAsync.assertEvent("one")
+            listener.stop(false)
+        }
+
+        // Assert that stopping is started.
+        stoppingExecutor.activate {
+            // Test stop while having `non processed event`
+            testAsync.assertEvent("stopping executor start")
+        }
+
+        // Assert that async processing of event is finished.
+        publisherExecutor.activate {
+            Thread.sleep(defaultTestAsyncAssertTimeoutMs * 2) // Sleep to couple pause at event processing.
+            // This finished event also is responsible for cancelling publisher subscription.
+            testAsync.assertEvent("publisher executor finished")
+        }
+
+        // Test `non processed event` processing by chained listener.
+        listenerExecutor.activate {
+            testAsync.assertEvent("listener executor start")
+            testAsync.assertEvent("chained one")
+            testAsync.assertEvent("listener executor finished")
+        }
+
+        // Test listener inner publisher closing.
+        listenerExecutor.activate {
+            testAsync.assertEvent("listener executor start", timeoutMs = 1000L)
+            testAsync.assertEvent("listener executor finished")
+        }
+
+        // Test async waiter stopping.
+        stoppingExecutor.activate {
+            testAsync.assertEvent("stopping executor finished")
+        }
+
+        testAsync.assertNoEvent()
+    }
+
     @Test
     fun `asynchronous double stop`() {
         // --- Prepare ---

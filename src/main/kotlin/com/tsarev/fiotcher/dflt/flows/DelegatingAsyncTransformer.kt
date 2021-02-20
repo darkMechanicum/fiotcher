@@ -66,10 +66,9 @@ class DelegatingAsyncTransformer<FromT : Any, ToT : Any, ListenerT>(
                 }
             }
         } finally {
+            subscription?.request(1)
             unprocessed.decrementAndGet()
         }
-
-        subscription?.request(1)
     }
 
     override fun doOnError(throwable: Throwable) {
