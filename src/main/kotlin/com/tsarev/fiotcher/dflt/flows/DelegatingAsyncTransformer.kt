@@ -6,6 +6,7 @@ import com.tsarev.fiotcher.dflt.push
 import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.flow.ChainingListener
 import java.util.concurrent.*
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Resource transformer, that delegates to passed function how to split and publish.
@@ -25,6 +26,11 @@ class DelegatingAsyncTransformer<FromT : Any, ToT : Any, ListenerT>(
 
     private val destination = SubmissionPublisher<EventWithException<ToT>>(executor, maxCapacity)
 
+    /**
+     * Number of unprocessed entries by this transformer.
+     */
+    private val unprocessed = AtomicLong(0)
+
     init {
         destination.subscribe(chained)
     }
@@ -39,23 +45,28 @@ class DelegatingAsyncTransformer<FromT : Any, ToT : Any, ListenerT>(
     class WrapperException(cause: Throwable) : FiotcherException(cause)
 
     override fun doOnNext(item: EventWithException<FromT>) {
-        handleErrors<ToT, FromT>(
-            handleErrors, item, { destination.submit(it) }
-        ) { event ->
-            try {
-                transform(event) {
-                    try {
-                        destination.submit(EventWithException(it, null))
-                    } catch (cause: Throwable) {
-                        // Wrap inner submit error.
-                        throw WrapperException(cause)
+        unprocessed.incrementAndGet()
+        try {
+            handleErrors<ToT, FromT>(
+                handleErrors, item, { destination.submit(it) }
+            ) { event ->
+                try {
+                    transform(event) {
+                        try {
+                            destination.submit(EventWithException(it, null))
+                        } catch (cause: Throwable) {
+                            // Wrap inner submit error.
+                            throw WrapperException(cause)
+                        }
                     }
+                } catch (wrapped: WrapperException) {
+                    val exception = FiotcherException(wrapped.cause!!)
+                    exception.addSuppressed(wrapped)
+                    throw exception
                 }
-            } catch (wrapped: WrapperException) {
-                val exception = FiotcherException(wrapped.cause!!)
-                exception.addSuppressed(wrapped)
-                throw exception
             }
+        } finally {
+            unprocessed.decrementAndGet()
         }
 
         subscription?.request(1)
@@ -93,7 +104,10 @@ class DelegatingAsyncTransformer<FromT : Any, ToT : Any, ListenerT>(
             CompletableFuture.completedFuture(Unit)
         else
             CompletableFuture.runAsync(
-                { while (destination.estimateMaximumLag() != 0) Thread.sleep(100) }, stoppingExecutor
+                {
+                    while (unprocessed.get() != 0L) Thread.sleep(100)
+                    while (destination.estimateMaximumLag() != 0) Thread.sleep(100)
+                }, stoppingExecutor
             )
 
     override fun doOnComplete() {

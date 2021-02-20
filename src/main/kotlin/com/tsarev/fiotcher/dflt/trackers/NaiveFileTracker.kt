@@ -21,15 +21,21 @@ class NaiveFileTracker(
     /**
      * Minimum time of one watch iteration in milliseconds.
      */
-    private val iterationMinMillis: Long = 100
+    private val iterationMinMillis: Long = 10,
+
+    /**
+     * If nested directories should be processed.
+     */
+    private val recursive: Boolean = true
+
 ) : Tracker<File>() {
 
-    data class DirectoriedStamp(val stamp: AtomicLong, val isDirectory: Boolean)
+    data class StampWithDirectoryFlag(val stamp: AtomicLong, val isDirectory: Boolean)
 
     /**
      * Already discovered files with their timestamp.
      */
-    private var discovered: ConcurrentHashMap<File, DirectoriedStamp> = ConcurrentHashMap()
+    private var discovered: ConcurrentHashMap<File, StampWithDirectoryFlag> = ConcurrentHashMap()
 
     /**
      * Returned publisher.
@@ -54,7 +60,7 @@ class NaiveFileTracker(
 
     override fun doInit(executor: Executor): Flow.Publisher<EventWithException<InitialEventsBunch<File>>> {
         if (!resourceBundle.exists() || !resourceBundle.isDirectory) throw FiotcherException("$resourceBundle is not a directory.")
-        discovered[resourceBundle] = DirectoriedStamp(AtomicLong(0), true)
+        discovered[resourceBundle] = StampWithDirectoryFlag(AtomicLong(0), true)
         innerPublisher = SubmissionPublisher(executor, 256)
         return innerPublisher
     }
@@ -99,7 +105,7 @@ class NaiveFileTracker(
             discovered.remove(file)
             return
         } else {
-            val dirStamp = discovered.computeIfAbsent(file) { DirectoriedStamp(AtomicLong(0), file.isDirectory) }
+            val dirStamp = discovered.computeIfAbsent(file) { StampWithDirectoryFlag(AtomicLong(0), file.isDirectory) }
             val lastModified = file.lastModified()
             val now = System.currentTimeMillis()
             val lastWatched = dirStamp.stamp.updateAndGet { previous -> if (previous < lastModified) now else previous }
@@ -119,9 +125,9 @@ class NaiveFileTracker(
      * Check for directory contents.
      */
     private fun checkDirectory(file: File) {
-        if (!file.isDirectory) {
-            return
-        } else {
+        if (!file.isDirectory) return
+        else if (file !== resourceBundle && !recursive) return
+        else {
             val innerFiles = file.listFiles() ?: emptyArray()
             for (innerFile in innerFiles) {
                 // Check is forced state.
