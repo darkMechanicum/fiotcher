@@ -31,7 +31,7 @@ class NaiveFileTracker(
     /**
      * An amount of time to believe, that file is changed.
      */
-    private val doesChangeThresholdMillis: Long = 100,
+    private val doesChangeThresholdMillis: Long = 10,
 
 ) : Tracker<File>() {
 
