@@ -104,8 +104,12 @@ class DelegatingAsyncTransformer<FromT : Any, ToT : Any, ListenerT>(
         else
             CompletableFuture.runAsync(
                 {
-                    while (unprocessed.get() != 0L) Thread.sleep(100)
-                    while (destination.estimateMaximumLag() != 0) Thread.sleep(100)
+                    while (unprocessed.get() != 0L) {
+                        Thread.sleep(100)
+                    }
+                    while (destination.subscribers.size > 0 && destination.estimateMaximumLag() != 0) {
+                        Thread.sleep(100)
+                    }
                 }, stoppingExecutor
             )
 

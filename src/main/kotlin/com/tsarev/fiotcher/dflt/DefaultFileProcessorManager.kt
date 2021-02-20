@@ -16,7 +16,7 @@ class DefaultFileProcessorManager(
 ) : FileProcessorManager, Stoppable by processor {
 
     override fun startTrackingFile(path: File, key: String, recursively: Boolean): CompletionStage<out Stoppable> {
-        val fileSystemTracker = NaiveFileTracker(recursive = recursively)
+        val fileSystemTracker = FileSystemTracker(recursive = recursively)
         return processor.startTracker(path, fileSystemTracker, key)
     }
 
