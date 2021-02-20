@@ -223,18 +223,20 @@ class AsynchronousDelegatingAsyncTransformerTest {
             testAsync.assertEvent("publisher executor finished")
         }
 
-        // Test listener inner publisher closing.
-        listenerExecutor.activate {
-            testAsync.assertEvent("listener executor start", timeoutMs = 1000L)
-            testAsync.assertEvent("listener executor finished")
-        }
-
         // Test async waiter stopping.
         stoppingExecutor.activate {
             testAsync.assertEvent("stopping executor finished")
         }
 
-        testAsync.assertNoEvent()
+        activateAll {
+            // Skip listener inner publisher closing (can be done in previous
+            // [listenerExecutor] block without separate execution submit).
+            testAsync.assertEvents(
+                "listener executor start" to false,
+                "listener executor finished" to false
+            )
+            testAsync.assertNoEvent()
+        }
     }
 
     /**
@@ -318,18 +320,20 @@ class AsynchronousDelegatingAsyncTransformerTest {
             testAsync.assertEvent("listener executor finished")
         }
 
-        // Test listener inner publisher closing.
-        listenerExecutor.activate {
-            testAsync.assertEvent("listener executor start", timeoutMs = 1000L)
-            testAsync.assertEvent("listener executor finished")
-        }
-
         // Test async waiter stopping.
         stoppingExecutor.activate {
             testAsync.assertEvent("stopping executor finished")
         }
 
-        testAsync.assertNoEvent()
+        activateAll {
+            // Skip listener inner publisher closing (can be done in previous
+            // [listenerExecutor] block without separate execution submit).
+            testAsync.assertEvents(
+                "listener executor start" to false,
+                "listener executor finished" to false
+            )
+            testAsync.assertNoEvent()
+        }
     }
 
     @Test
