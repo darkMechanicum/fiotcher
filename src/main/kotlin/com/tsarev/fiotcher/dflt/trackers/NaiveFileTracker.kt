@@ -21,7 +21,7 @@ class NaiveFileTracker(
     /**
      * Minimum time of one watch iteration in milliseconds.
      */
-    private val iterationMinMillis: Long = 10,
+    private val iterationMinMillis: Long = 40,
 
     /**
      * If nested directories should be processed.
@@ -67,23 +67,22 @@ class NaiveFileTracker(
 
     override fun run() {
         trackerThread = Thread.currentThread()
-        val currentThread = Thread.currentThread()
-        while (true) {
+        outer@while (true) {
             // Fix isStopped state to allow last graceful watch iteration.
             val isStoppedFixed = isStopped
             val discoveredCopy = discovered.entries.sortedBy { it.key.absolutePath }
             val iterationMinFinishTime = System.currentTimeMillis() + iterationMinMillis
-            outer@for ((file, stamp) in discoveredCopy) {
+            for ((file, stamp) in discoveredCopy) {
                 // Check is forced state.
-                if (isForced) break
+                if (isForced) break@outer
                 // Watch all common files.
                 checkFile(file)
                 // Check is forced state.
-                if (isForced) break
+                if (isForced) break@outer
                 // Watch all directory contents.
                 if (stamp.isDirectory) checkDirectory(file)
             }
-            if (isStoppedFixed || currentThread.isInterrupted) break
+            if (isStoppedFixed || trackerThread?.isInterrupted == true) break
             val remaining = iterationMinFinishTime - System.currentTimeMillis()
             try {
                 if (remaining >= 0) Thread.sleep(remaining)
@@ -114,7 +113,13 @@ class NaiveFileTracker(
                     // Exists check must be the last, since file can be deleted and
                     // despite this have modified time.
                     if (file.exists()) {
-                        innerPublisher.submit(InitialEventsBunch(listOf(file)).asSuccess())
+                        // Use interruptible version.
+                        innerPublisher.offer(
+                                InitialEventsBunch(listOf(file)).asSuccess(),
+                                Long.MAX_VALUE,
+                                TimeUnit.MILLISECONDS,
+                                null
+                        )
                     }
                 }
             }

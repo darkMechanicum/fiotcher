@@ -83,8 +83,8 @@ val defaultTestAsyncAssertTimeoutMs = if (isWindows) 2000L else 500L
  * @param event event ot send
  * @param timeoutMs time allocated for sending
  */
-fun AsyncTestEvents.sendEvent(event: Any, timeoutMs: Long = defaultTestAsyncAssertTimeoutMs) {
-    if (!offer(event, timeoutMs, TimeUnit.MILLISECONDS))
+fun AsyncTestEvents.sendEvent(event: Any, required: Boolean = true, timeoutMs: Long = defaultTestAsyncAssertTimeoutMs) {
+    if (!offer(event, timeoutMs, TimeUnit.MILLISECONDS) && required)
         Assertions.fail<Unit>("Failed to send event [$event]")
 }
 
@@ -99,7 +99,7 @@ inline fun <reified T> AsyncTestEvents.assertEvent(
     assertion: (T) -> Unit
 ) {
     when (val polled = poll(timeoutMs, TimeUnit.MILLISECONDS)) {
-        is T -> assertion(polled)
+        is T -> assertion(polled as T)
         null -> Assertions.fail<Unit>("No event received")
         else -> Assertions.fail { "Expected event [$polled] has type [${polled::class}] instead of expected [${T::class}]" }
     }

@@ -155,7 +155,13 @@ class FileSystemTracker(
                                 .toSet()
 
                             if (events.isNotEmpty()) {
-                                publisher.submit(InitialEventsBunch(events).asSuccess())
+                                // Use interruptible version.
+                                publisher.offer(
+                                        InitialEventsBunch(events).asSuccess(),
+                                        Long.MAX_VALUE,
+                                        TimeUnit.MILLISECONDS,
+                                        null
+                                )
                             }
                         }
                     }
