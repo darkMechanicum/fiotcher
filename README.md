@@ -42,8 +42,6 @@ They include:
 
 # Current limitations
 There are some limitations at the moment, that can be eliminated within current design:
-1. There can't be more than one listener bind to the key at the moment.
-   It can be fixed with more complicated records logic in `DefaultListenerPool`.
 1. Graceful stop can lost some events, when using custom aggregators via `ProcessorManager#ListenerBuilder#doAggregate` method,
    because aggregators and listeners are stopped simultaneously.
    Aggregators and listener chain dependency management can fix it.
