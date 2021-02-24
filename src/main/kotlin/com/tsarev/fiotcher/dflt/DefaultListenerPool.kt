@@ -6,7 +6,9 @@ import com.tsarev.fiotcher.internal.*
 import com.tsarev.fiotcher.internal.flow.ChainingListener
 import com.tsarev.fiotcher.internal.pool.AggregatorPool
 import com.tsarev.fiotcher.internal.pool.ListenerPool
+import java.util.*
 import java.util.concurrent.*
+import kotlin.collections.HashMap
 
 /**
  * Default [ListenerPool] implementation.
@@ -23,7 +25,7 @@ class DefaultListenerPool(
     /**
      * Registered listeners, by key.
      */
-    private val registeredListeners = ConcurrentHashMap<KClassTypedKey<*>, SingleSubscriptionSubscriber<*>>()
+    private val registeredListeners = ConcurrentHashMap<KClassTypedKey<*>, MutableSet<SingleSubscriptionSubscriber<*>>>()
 
     override fun <EventT : Any> registerListener(
         listener: ChainingListener<EventT>,
@@ -34,10 +36,7 @@ class DefaultListenerPool(
         // Sync on the pool to handle stopping properly.
         synchronized(this) {
             validateIsStopping { PoolIsStopped() }
-            if (registeredListeners.putIfAbsent(key, listener) != null) throw ListenerAlreadyRegistered(
-                key.key,
-                key.klass
-            )
+            registeredListeners.computeIfAbsent(key) { Collections.synchronizedSet(HashSet()) } += listener
             // If listener is [SingleSubscriptionSubscriber<*>] and [ChainingListener<EventT>]
             // so definitely it is also a [SingleSubscriptionSubscriber<EventT>]
             aggregatorPool.getAggregator(key).subscribe(listener as SingleSubscriptionSubscriber<EventT>)
@@ -50,8 +49,8 @@ class DefaultListenerPool(
         validateIsStopping { PoolIsStopped() }
         // Check if we need to de register anything.
         val deRegistered = registeredListeners[key]
-        return if (deRegistered != null) doDeRegisterListener(
-            key, force, deRegistered
+        return if (deRegistered != null) doDeRegisterListeners(
+            key, force, deRegistered.toSet()
         ) else CompletableFuture.completedFuture(Unit)
     }
 
@@ -62,12 +61,27 @@ class DefaultListenerPool(
         val allListenersStopFuture =
             if (listenersCopy.isEmpty()) CompletableFuture.completedFuture(Unit)
             else listenersCopy
-                .map { doDeRegisterListener(it.key, force, it.value) }
+                .map { doDeRegisterListeners(it.key, force, it.value) }
                 .reduce { first, second -> first.thenAcceptBoth(second) { _, _ -> } }
         allListenersStopFuture.thenAccept {
             registeredListeners.clear()
             brk.complete(Unit)
         }
+    }
+
+    /**
+     * Perform actual listeners de registration.
+     */
+    private fun <EventT : Any> doDeRegisterListeners(
+        key: KClassTypedKey<EventT>,
+        force: Boolean,
+        listeners: Collection<ChainingListener<*>>
+    ): CompletionStage<*> {
+        var initial: CompletionStage<*> = CompletableFuture.completedFuture(Unit)
+        for (listener in listeners) {
+            initial = initial.thenAcceptBoth(doDeRegisterListener(key, force, listener)) { _, _ -> }
+        }
+        return initial
     }
 
     /**
@@ -78,13 +92,11 @@ class DefaultListenerPool(
         force: Boolean,
         listener: ChainingListener<*>
     ): CompletionStage<*> {
-        val deRegistered = registeredListeners[key]
-        return if (deRegistered != null && listener === deRegistered) {
+        val deRegisteredBucket = registeredListeners[key]
+        return if (deRegisteredBucket != null && deRegisteredBucket.contains(listener)) {
             // Remove only that listener, that we are de registering.
-            deRegistered.stop(force).thenAccept {
-                registeredListeners.computeIfPresent(key) { _, old ->
-                    if (old === listener) null else old
-                }
+            listener.stop(force).thenAccept {
+                deRegisteredBucket.remove(listener)
             } ?: CompletableFuture.completedFuture(Unit)
         } else {
             CompletableFuture.completedFuture(Unit)

@@ -10,12 +10,6 @@ open class FiotcherException : RuntimeException {
 }
 
 /**
- * Exception to signal, that tracker listener has been already registered for some key.
- */
-class ListenerAlreadyRegistered(key: String, type: Any) :
-    FiotcherException("Listener for key: $key and type: $type has been already registered.")
-
-/**
  * Exception to signal, that tracker has been already registered for some URI.
  */
 class TrackerAlreadyRegistered(resource: Any, key: String) :

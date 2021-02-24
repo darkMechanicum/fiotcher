@@ -35,7 +35,6 @@ interface ProcessorManager<InitialEventT : Any> {
      * Listen directly for tracker produced events.
      *
      * @param key type of this tracked path, to bind to handlers
-     * @throws ListenerAlreadyRegistered if there is already registered listener for this key
      */
     fun listenForInitial(key: String): ListenerBuilder<InitialEventsBunch<InitialEventT>>
 
@@ -57,7 +56,6 @@ interface ProcessorManager<InitialEventT : Any> {
      * Listen for custom made event.
      *
      * @param key type of listened events, to bind to handlers
-     * @throws ListenerAlreadyRegistered if there is already registered listener for this key and type
      * @param type event type to listen
      */
     fun <EventT : EventMarker> listenForKey(key: String, type: KClass<EventT>): ListenerBuilder<EventT>

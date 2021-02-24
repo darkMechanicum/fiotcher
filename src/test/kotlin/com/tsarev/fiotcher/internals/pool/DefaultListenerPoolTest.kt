@@ -1,6 +1,5 @@
 package com.tsarev.fiotcher.internals.pool
 
-import com.tsarev.fiotcher.api.ListenerAlreadyRegistered
 import com.tsarev.fiotcher.api.typedKey
 import com.tsarev.fiotcher.dflt.DefaultAggregatorPool
 import com.tsarev.fiotcher.dflt.DefaultListenerPool
@@ -52,6 +51,54 @@ class DefaultListenerPoolTest {
         Assertions.assertTrue(listener.isStopped)
     }
 
+    @Test
+    fun `synchronous send single event for two registered listeners`() {
+        // --- Prepare ---
+        val aggregatorPool = DefaultAggregatorPool(
+            100,
+            callerThreadTestExecutor,
+            callerThreadTestExecutor
+        )
+        val key = "key".typedKey<String>()
+        val pool = DefaultListenerPool(aggregatorPool)
+        val firstListener = CommonListener<String>(
+            onNextHandler = { testSync.sendEvent("first $it") },
+            onSubscribeHandler = { testSync.sendEvent("first subscribed") },
+        )
+        val secondListener = CommonListener<String>(
+            onNextHandler = { testSync.sendEvent("second $it") },
+            onSubscribeHandler = { testSync.sendEvent("second subscribed") },
+        )
+        val aggregator = aggregatorPool.getAggregator(key)
+
+        // --- Test ---
+        val firstListenerHandle = pool.registerListener(firstListener, key)
+        testSync.assertEvent("first subscribed")
+        val secondListenerHandle = pool.registerListener(secondListener, key)
+        testSync.assertEvent("second subscribed")
+        testSync.assertNoEvent()
+
+        aggregator.onNext("item".asSuccess())
+        testSync.assertEvent("first item")
+        testSync.assertEvent("second item")
+        testSync.assertNoEvent()
+
+        firstListenerHandle.stop()
+        Assertions.assertTrue(firstListenerHandle.isStopped)
+        Assertions.assertTrue(firstListener.isStopped)
+
+        aggregator.onNext("item".asSuccess())
+        testSync.assertEvent("second item")
+        testSync.assertNoEvent()
+
+        secondListenerHandle.stop()
+        Assertions.assertTrue(secondListenerHandle.isStopped)
+        Assertions.assertTrue(secondListener.isStopped)
+
+        aggregator.onNext("item".asSuccess())
+        testSync.assertNoEvent()
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = [true, false])
     fun `synchronous listener double stop`(force: Boolean) {
@@ -71,7 +118,7 @@ class DefaultListenerPoolTest {
     }
 
     @Test
-    fun `asynchronous listener register`() {
+    fun `asynchronous single listener register and single event`() {
         // --- Prepare ---
         val listenerExecutor = acquireExecutor(
             name = "listener executor",
@@ -344,37 +391,6 @@ class DefaultListenerPoolTest {
             testAsync.assertEvent("aggregator executor start")
             testAsync.assertEvent("aggregator executor finished")
             testAsync.assertNoEvent()
-        }
-    }
-
-    @Test
-    fun `synchronous listener with same key is registered`() {
-        // --- Prepare ---
-        val key = "key".typedKey<String>()
-        val aggregatorPool = DefaultAggregatorPool(
-            100,
-            callerThreadTestExecutor,
-            callerThreadTestExecutor
-        )
-        val pool = DefaultListenerPool(aggregatorPool)
-        val chained = CommonListener<String>(
-            onNextHandler = { },
-            onSubscribeHandler = { }
-        )
-        val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
-            executor = callerThreadTestExecutor,
-            maxCapacity = 10,
-            chained = chained,
-            stoppingExecutor = callerThreadTestExecutor,
-            onSubscribeHandler = { },
-            transform = { it, publish -> publish(it) },
-            handleErrors = null
-        )
-
-        // --- Test ---
-        pool.registerListener(listener, key)
-        Assertions.assertThrows(ListenerAlreadyRegistered::class.java) {
-            pool.registerListener(listener, key)
         }
     }
 
