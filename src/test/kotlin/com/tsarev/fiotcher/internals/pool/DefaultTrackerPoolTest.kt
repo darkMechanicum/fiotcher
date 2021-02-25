@@ -334,6 +334,8 @@ class DefaultTrackerPoolTest {
         val startHandle = pool.startTracker("some", testTracker, key)
         registrationExecutor.activate {
             testAsync.assertEvent("registration start")
+            // Increase registration executor activation time to pass "tracker initialized" event.
+            Thread.sleep(defaultTestAsyncAssertTimeoutMs / 2)
         }
         // Do not pass to subscription by syncing on event outside of executor active block.
         testAsync.assertEvent("tracker initialized")
