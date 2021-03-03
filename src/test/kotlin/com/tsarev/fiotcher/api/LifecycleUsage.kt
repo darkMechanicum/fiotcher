@@ -17,27 +17,27 @@ class LifecycleUsage {
     @Test
     fun `test forcible stop`() {
         // --- Prepare ---
-        val aggregatorExecutor = acquireExecutor("queue", testAsync::sendEvent, testAsync::sendEvent)
-        val manager = DefaultFileProcessorManager(DefaultProcessor(aggregatorExecutorService = aggregatorExecutor))
+        val executor = acquireExecutor("queue", testAsync::sendEvent, testAsync::sendEvent)
+        val manager = DefaultFileProcessorManager(executorService = executor)
         val key = "key"
 
-        // Start tracking file.
-        manager.startTrackingFile(tempDir, key, false)
-            .toCompletableFuture().get()
-
-        // Create simple listener.
-        manager.listenForInitial(key)
-            .split { it }
-            // Send file name as event.
-            .startListening { testAsync.sendEvent(it.name) }
-
         // --- Test ---
+        executor.activate {
 
-        aggregatorExecutor.activate {
+            // Start tracking file.
+            val trackerHandle = manager.startTrackingFile(tempDir, key, false)
+                .toCompletableFuture()
 
             // Approve aggregator subscription.
             testAsync.assertEvent("queue start")
             testAsync.assertEvent("queue finished")
+
+            trackerHandle.get()
+
+            // Create simple listener.
+            manager.listenForKey(key)
+                // Send file name as event.
+                .startListening { it.forEach { testAsync.sendEvent(it.name) } }
 
             // Create first file.
             tempDir.createFile("newFile.txt") { "content" }
@@ -54,7 +54,7 @@ class LifecycleUsage {
         // forcibly stop with suspended processing.
         val handle = manager.stop(true)
 
-        aggregatorExecutor.activate {
+        executor.activate {
             // Check for queues stopping.
             testAsync.assertEvent("queue start")
             testAsync.assertEvent("queue finished")
@@ -71,7 +71,7 @@ class LifecycleUsage {
     fun `test graceful stop`() {
         // --- Prepare ---
         val aggregatorExecutor = acquireExecutor("queue", testAsync::sendEvent, testAsync::sendEvent)
-        val manager = DefaultFileProcessorManager(DefaultProcessor(aggregatorExecutorService = aggregatorExecutor))
+        val manager = DefaultFileProcessorManager()
         val key = "key"
 
         // Start tracking file.
@@ -79,10 +79,9 @@ class LifecycleUsage {
             .toCompletableFuture().get()
 
         // Create simple listener.
-        manager.listenForInitial(key)
-            .split { it }
+        manager.listenForKey(key)
             // Send file name as event.
-            .startListening { testAsync.sendEvent(it.name) }
+            .startListening { it.forEach { testAsync.sendEvent(it.name) } }
 
         // --- Test ---
 

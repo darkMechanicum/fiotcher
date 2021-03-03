@@ -33,7 +33,7 @@ class NaiveFileTracker(
      */
     private val doesChangeThresholdMillis: Long = 10,
 
-) : Tracker<File>() {
+    ) : Tracker<File>() {
 
     data class StampWithDirectoryFlag(val stamp: AtomicLong, val isDirectory: Boolean)
 
@@ -43,9 +43,9 @@ class NaiveFileTracker(
     private var discovered: ConcurrentHashMap<File, StampWithDirectoryFlag> = ConcurrentHashMap()
 
     /**
-     * Returned publisher.
+     * Send event closure.
      */
-    private lateinit var innerPublisher: SubmissionPublisher<EventWithException<InitialEventsBunch<File>>>
+    private lateinit var sendEvent: (EventWithException<InitialEventsBunch<File>>) -> Unit
 
     /**
      * Thread that runs this tracker.
@@ -61,18 +61,20 @@ class NaiveFileTracker(
     /**
      * Stop brake.
      */
-    private val brake = Brake<Unit>()
+    override val stopBrake = Brake<Unit>()
 
-    override fun doInit(executor: Executor): Flow.Publisher<EventWithException<InitialEventsBunch<File>>> {
+    override fun doInit(
+        executor: Executor,
+        sendEvent: (EventWithException<InitialEventsBunch<File>>) -> Unit
+    ) {
         if (!resourceBundle.exists() || !resourceBundle.isDirectory) throw FiotcherException("$resourceBundle is not a directory.")
         discovered[resourceBundle] = StampWithDirectoryFlag(AtomicLong(0), true)
-        innerPublisher = SubmissionPublisher(executor, 256)
-        return innerPublisher
+        this.sendEvent = sendEvent
     }
 
     override fun run() {
         trackerThread = Thread.currentThread()
-        outer@while (true) {
+        outer@ while (true) {
             // Fix isStopped state to allow last graceful watch iteration.
             val isStoppedFixed = isStopped
             val discoveredCopy = discovered.entries.sortedBy { it.key.absolutePath }
@@ -96,7 +98,7 @@ class NaiveFileTracker(
             }
         }
         // Complete brake handler.
-        brake.push().complete(Unit)
+        stopBrake.push().complete(Unit)
     }
 
     /**
@@ -112,21 +114,15 @@ class NaiveFileTracker(
             val dirStamp = discovered.computeIfAbsent(file) { StampWithDirectoryFlag(AtomicLong(0), file.isDirectory) }
             val lastModified = file.lastModified()
             val now = System.currentTimeMillis()
-            val lastWatched = dirStamp.stamp.updateAndGet {
-                previous -> if (previous + doesChangeThresholdMillis < lastModified) now else previous
+            val lastWatched = dirStamp.stamp.updateAndGet { previous ->
+                if (previous + doesChangeThresholdMillis < lastModified) now else previous
             }
             if (lastWatched == now) {
                 if (!dirStamp.isDirectory && !isForced) {
                     // Exists check must be the last, since file can be deleted and
                     // despite this have modified time.
                     if (file.exists()) {
-                        // Use interruptible version.
-                        innerPublisher.offer(
-                                InitialEventsBunch(listOf(file)).asSuccess(),
-                                Long.MAX_VALUE,
-                                TimeUnit.MILLISECONDS,
-                                null
-                        )
+                        sendEvent(InitialEventsBunch(listOf(file)).asSuccess())
                     }
                 }
             }
@@ -152,10 +148,10 @@ class NaiveFileTracker(
     /**
      * Stop processing.
      */
-    override fun doStop(force: Boolean) = brake.push {
+    override fun doStop(force: Boolean, exception: Throwable?) = stopBrake.push {
         if (force) trackerThread?.interrupt()
         isForced = force
     }
 
-    override val isStopped get() = brake.isPushed
+    override val isStopped get() = stopBrake.isPushed
 }

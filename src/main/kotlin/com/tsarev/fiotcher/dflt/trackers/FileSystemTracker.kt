@@ -11,8 +11,6 @@ import java.io.File
 import java.nio.file.*
 import java.time.Instant
 import java.util.concurrent.Executor
-import java.util.concurrent.Flow
-import java.util.concurrent.SubmissionPublisher
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -66,7 +64,7 @@ class FileSystemTracker(
     /**
      * If this tracker is running.
      */
-    private val brake = Brake<Unit>()
+    override val stopBrake = Brake<Unit>()
 
     /**
      * If this tracker is being stopped forcibly.
@@ -95,22 +93,22 @@ class FileSystemTracker(
     private var registeredWatches: MutableMap<Path, WatchKey> = HashMap()
 
     /**
-     * Create brand new publisher.
+     * Send event closure.
      */
-    private lateinit var publisher: SubmissionPublisher<EventWithException<InitialEventsBunch<File>>>
+    private lateinit var sendEvent: (EventWithException<InitialEventsBunch<File>>) -> Unit
 
-    override val isStopped get() = brake.get() != null
+    override val isStopped get() = stopBrake.get() != null
 
     /**
      * Initialize existing directories.
      */
     override fun doInit(
-        executor: Executor
-    ): Flow.Publisher<EventWithException<InitialEventsBunch<File>>> {
+        executor: Executor,
+        sendEvent: (EventWithException<InitialEventsBunch<File>>) -> Unit
+    ) {
         if (!resourceBundle.isDirectory) throw IllegalArgumentException("$resourceBundle is not a directory!")
-        publisher = SubmissionPublisher(executor, Flow.defaultBufferSize())
         registerRecursively(resourceBundle)
-        return publisher
+        this.sendEvent = sendEvent
     }
 
     /**
@@ -119,7 +117,7 @@ class FileSystemTracker(
     override fun run() {
         var key: WatchKey? = null
         try {
-            while (!isStopping()) {
+            while (!isStopping) {
                 try {
                     // Try fetch any change.
                     key = watchService.poll(checkForStopTimeoutMs, TimeUnit.MILLISECONDS)
@@ -155,13 +153,7 @@ class FileSystemTracker(
                                 .toSet()
 
                             if (events.isNotEmpty()) {
-                                // Use interruptible version.
-                                publisher.offer(
-                                        InitialEventsBunch(events).asSuccess(),
-                                        Long.MAX_VALUE,
-                                        TimeUnit.MILLISECONDS,
-                                        null
-                                )
+                                sendEvent(InitialEventsBunch(events).asSuccess())
                             }
                         }
                     }
@@ -219,7 +211,7 @@ class FileSystemTracker(
      * Perform directories recursive scan, registering them.
      */
     private fun registerRecursively(from: File) {
-        while (!isStopping()) {
+        while (!isStopping) {
             // Break links loops.
             if (registeredWatches.containsKey(from.toPath()))
                 return
@@ -315,17 +307,18 @@ class FileSystemTracker(
         }
     }
 
-    /**
-     * Do stop.
-     */
-    override fun doStop(force: Boolean) = this
+    override fun doStop(force: Boolean, exception: Throwable?) = this
         .forced.set(force)
-        .let { brake.push() }
+        .let {
+            stopBrake.push {
+                if (exception != null) completeExceptionally(exception)
+            }
+        }
 
     /**
      * Create brake synchronously.
      */
-    private fun doStopBrake() = brake.push().apply {
+    private fun doStopBrake() = stopBrake.push().apply {
         watchService.close()
         registeredWatches.clear()
         discovered.clear()
@@ -335,7 +328,7 @@ class FileSystemTracker(
     /**
      * Check, whether this [Tracker] is stopping.
      */
-    private fun isStopping() = brake.get() != null || Thread.currentThread().isInterrupted
+    override val isStopping get() = stopBrake.get() != null || Thread.currentThread().isInterrupted
 
     /**
      * Extension to hide casting.

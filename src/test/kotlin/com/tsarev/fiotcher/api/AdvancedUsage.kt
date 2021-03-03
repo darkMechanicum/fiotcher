@@ -1,7 +1,6 @@
 package com.tsarev.fiotcher.api
 
 import com.tsarev.fiotcher.dflt.DefaultFileProcessorManager
-import com.tsarev.fiotcher.dflt.DefaultProcessor
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -17,7 +16,7 @@ class AdvancedUsage {
     @Test
     fun `two directories usage with defaults`() {
         // --- Prepare ---
-        val manager = DefaultFileProcessorManager(DefaultProcessor())
+        val manager = DefaultFileProcessorManager()
         val key = "key"
 
         val firstTempDir = tempDir.createDirectory("first")
@@ -30,10 +29,9 @@ class AdvancedUsage {
             .toCompletableFuture().get()
 
         // Create simple listener.
-        manager.listenForInitial(key)
-            .split { it }
+        manager.listenForKey(key)
             // Send file name as event.
-            .startListening { testAsync.sendEvent(it.name) }
+            .startListening { it.forEach { testAsync.sendEvent(it.name) } }
 
         // --- Test ---
 
@@ -67,17 +65,16 @@ class AdvancedUsage {
     @Test
     fun `two listeners usage with defaults`() {
         // --- Prepare ---
-        val manager = DefaultFileProcessorManager(DefaultProcessor())
+        val manager = DefaultFileProcessorManager()
         val key = "key"
         // Start tracking file.
         manager.startTrackingFile(tempDir, key, false)
             .toCompletableFuture().get()
 
         // Create listener.
-        val listenerHandle = manager.listenForInitial(key)
-            .split { it }
+        val listenerHandle = manager.listenForKey(key)
             // Send file name as event.
-            .startListening { testAsync.sendEvent(it.name) }
+            .startListening { it.forEach { testAsync.sendEvent(it.name) } }
 
         // --- Test ---
 
@@ -97,10 +94,9 @@ class AdvancedUsage {
         testAsync.assertNoEvent()
 
         // Create listener again.
-        manager.listenForInitial(key)
-            .split { it }
+        manager.listenForKey(key)
             // Send file name as event.
-            .startListening { testAsync.sendEvent(it.name) }
+            .startListening { it.forEach { testAsync.sendEvent(it.name) } }
 
         // Create third file.
         tempDir.createFile("newFile3.txt") { "content" }
@@ -108,7 +104,7 @@ class AdvancedUsage {
         // Check that event was passed.
         testAsync.assertEvent("newFile3.txt")
 
-        manager.stopListeningInitial(key).toCompletableFuture().get()
+        manager.stopListening(key).toCompletableFuture().get()
 
         // Create fourth file.
         tempDir.createFile("newFile3.txt") { "content" }

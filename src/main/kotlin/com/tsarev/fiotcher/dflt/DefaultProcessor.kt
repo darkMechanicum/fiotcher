@@ -1,8 +1,9 @@
 package com.tsarev.fiotcher.dflt
 
+import com.tsarev.fiotcher.api.InitialEventsBunch
 import com.tsarev.fiotcher.api.Stoppable
+import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.Processor
-import com.tsarev.fiotcher.internal.flow.WayStation
 import com.tsarev.fiotcher.internal.pool.ListenerPool
 import com.tsarev.fiotcher.internal.pool.TrackerPool
 import java.util.concurrent.*
@@ -11,127 +12,55 @@ import java.util.concurrent.*
  * Default processor implementation, using
  * [DefaultWayStation] and [DefaultTrackerPool].
  */
-class DefaultProcessor<WatchT : Any>(
+class DefaultProcessor<WatchT : Any> private constructor(
     /**
-     * Maximum capacity for aggregator queues.
+     * Executor service, used for processing.
      */
-    aggregatorMaxCapacity: Int = Flow.defaultBufferSize() shl 1,
+    private val executorService: ExecutorService = Executors.newCachedThreadPool(),
 
     /**
-     * Max queue capacity, used for transformers.
+     * Marker field to avoid constructor cycle.
      */
-    maxTransformerCapacity: Int = Flow.defaultBufferSize(),
+    @Suppress("unused") private val marker: Any,
 
-    /**
-     * Executor service, used for asynchronous transformers.
-     */
-    // Separate pool due to possible blocking operations while reading changes.
-    private val transformerExecutorService: ExecutorService = Executors.newCachedThreadPool(),
-
-    /**
-     * Executor, used to run trackers.
-     */
-    //Separate pool due to possible blocking operations while tracking.
-    private val trackerExecutor: ExecutorService = Executors.newCachedThreadPool(),
-
-    /**
-     * Executor, used to perform tracker event publishing to aggregators.
-     */
-    private val trackerExecutorService: ExecutorService = ForkJoinPool.commonPool(),
-
-    /**
-     * Executor, used to perform queue aggregation.
-     */
-    private val aggregatorExecutorService: ExecutorService = ForkJoinPool.commonPool(),
-
-    /**
-     * Executor, used to perform trackers registration process.
-     */
-    private val registrationExecutorService: ExecutorService = ForkJoinPool.commonPool(),
-
-    /**
-     * Executor, used at stopping.
-     */
-    // Separate pool for possible-blocking shutdown.
-    private val stoppingExecutorService: ExecutorService = Executors.newCachedThreadPool(),
-
-    private val aggregatorPool: DefaultAggregatorPool = DefaultAggregatorPool(
-        aggregatorMaxCapacity,
-        aggregatorExecutorService,
-        stoppingExecutorService
+    private val publisherPool: DefaultPublisherPool<EventWithException<InitialEventsBunch<WatchT>>> = DefaultPublisherPool(
+        executorService,
+        256
     ),
 
-    private val wayStation: WayStation = DefaultWayStation(
-        maxTransformerCapacity,
-        transformerExecutorService,
-        stoppingExecutorService,
-        aggregatorPool
-    ),
+    private val trackerPool: DefaultTrackerPool<WatchT> = DefaultTrackerPool(executorService, publisherPool),
 
-    private val trackerPool: TrackerPool<WatchT> = DefaultTrackerPool(
-        trackerExecutor,
-        trackerExecutorService,
-        registrationExecutorService,
-        aggregatorPool
-    ),
+    private val listenerPool: DefaultListenerPool<InitialEventsBunch<WatchT>> = DefaultListenerPool(publisherPool),
 
-    private val listenerPool: ListenerPool = DefaultListenerPool(
-        aggregatorPool
-    ),
+    ) : Processor<WatchT>, TrackerPool<WatchT> by trackerPool, ListenerPool<InitialEventsBunch<WatchT>> by listenerPool,
+    Stoppable, StoppableBrakeMixin<Unit> {
 
-    ) : Processor<WatchT>, Stoppable, TrackerPool<WatchT> by trackerPool, ListenerPool by listenerPool,
-    WayStation by wayStation {
+    // Allowed public constructor.
+    constructor(executorService: ExecutorService) : this(executorService, Any())
 
     /**
      * Main processor brake.
      */
-    private val brake = Brake<Unit>()
+    override val stopBrake = Brake<Unit>()
 
-    override val isStopped get() = brake.isPushed
-
-    override fun stop(force: Boolean) = brake.push { brk ->
+    override fun doStop(force: Boolean, exception: Throwable?) = stopBrake.push {
         if (force) {
-            val aggregatorHandle = aggregatorPool.stop(force)
-            val listenerHandle = listenerPool.stop(force).thenAccept { }
-            val executorsHandle = CompletableFuture.runAsync({
-                trackerExecutor.shutdownNow()
-                aggregatorExecutorService.shutdownNow()
-                transformerExecutorService.shutdownNow()
-                trackerExecutorService.shutdownNow()
-                registrationExecutorService.shutdownNow()
-            }, stoppingExecutorService)
-            trackerPool.stop(force)
-                .thenCompose { aggregatorHandle }
-                .thenCompose { listenerHandle }
-                .thenCompose { executorsHandle }
-                .thenAccept {
-                    // Stopping executor must be shot down lastly.
-                    stoppingExecutorService.shutdown()
-                    brk.complete(Unit)
-                }
+            listenerPool.stop(true)
+            trackerPool.stop(true)
+            publisherPool.clear()
+            executorService.shutdownNow()
+            complete(Unit)
         } else {
-            // Order is important to guarantee graceful stopping order.
-            trackerPool.stop(force)
-                .thenCompose { aggregatorPool.stop(force) }
-                .thenCompose { listenerPool.stop(force).thenAccept { } }
+            // Order is important to guarantee graceful stopping.
+            trackerPool.stop(false)
+                .thenCompose { listenerPool.stop(false).thenAccept { } }
                 .thenAccept {
-                    trackerExecutor.shutdown()
-                    aggregatorExecutorService.shutdown()
-                    transformerExecutorService.shutdown()
-                    trackerExecutorService.shutdown()
-                    registrationExecutorService.shutdown()
-                    stoppingExecutorService.shutdown()
-                    brk.complete(Unit)
+                    publisherPool.clear()
+                    // Stopping executor must be shot down lastly.
+                    executorService.shutdown()
+                    complete(Unit)
                 }
         }
-    }
-
-    override fun stopAndWait(force: Boolean) {
-        stop(force).toCompletableFuture().get()
-    }
-
-    override fun stopAndWait(timeout: Long, unit: TimeUnit, force: Boolean) {
-        stop(force).toCompletableFuture().get(timeout, unit)
     }
 
 }

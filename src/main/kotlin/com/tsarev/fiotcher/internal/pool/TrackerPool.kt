@@ -1,7 +1,6 @@
 package com.tsarev.fiotcher.internal.pool
 
 import com.tsarev.fiotcher.api.PoolIsStopped
-import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.api.TrackerAlreadyRegistered
 import java.util.concurrent.CompletionStage
 
@@ -13,7 +12,7 @@ import java.util.concurrent.CompletionStage
  * Responsible for trackers asynchronous initialization and
  * processing.
  */
-interface TrackerPool<WatchT : Any> : Stoppable {
+interface TrackerPool<WatchT : Any> {
 
     /**
      * Register and start tracker to scan passed [resourceBundle].

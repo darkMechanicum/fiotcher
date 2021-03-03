@@ -19,7 +19,7 @@ class CommonListenerTest {
     @Test
     fun `send two events`() {
         // --- Prepare ---
-        val listener = CommonListener<String>({ testSync.sendEvent(it) }, { testSync.sendEvent("subscribed") })
+        val listener = CommonListener<String> { testSync.sendEvent(it) }
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
 
         // --- Test ---
@@ -35,7 +35,7 @@ class CommonListenerTest {
     @Test
     fun `stop after one submit`() {
         // --- Prepare ---
-        val listener = CommonListener<String>({ testSync.sendEvent(it) }, { testSync.sendEvent("subscribed") })
+        val listener = CommonListener<String> { testSync.sendEvent(it) }
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
 
         // --- Test ---
@@ -51,7 +51,7 @@ class CommonListenerTest {
     @Test
     fun `stop before submit`() {
         // --- Prepare ---
-        val listener = CommonListener<String>({ testSync.sendEvent(it) }, { testSync.sendEvent("subscribed") })
+        val listener = CommonListener<String> { testSync.sendEvent(it) }
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
 
         // --- Test ---
@@ -67,8 +67,8 @@ class CommonListenerTest {
     fun `stop before subscribe`() {
         // --- Prepare ---
         val listener = CommonListener<String>(
-            onNextHandler = { },
-            onErrorHandler = { testSync.sendEvent(it) }
+            handleErrors = { testSync.sendEvent(it); null },
+            listener = { }
         )
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
 

@@ -1,12 +1,10 @@
 package com.tsarev.fiotcher.api
 
 import com.tsarev.fiotcher.dflt.DefaultFileProcessorManager
-import com.tsarev.fiotcher.dflt.DefaultProcessor
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.ValueSource
 import java.io.File
 
 class BasicUsage {
@@ -16,21 +14,19 @@ class BasicUsage {
 
     private val testAsync = AsyncTestEvents()
 
-    @ParameterizedTest
-    @ValueSource(booleans = [true, false])
-    fun `basic single directory usage with defaults`(async: Boolean) {
+    @Test
+    fun `basic single directory usage with defaults`() {
         // --- Prepare ---
-        val manager = DefaultFileProcessorManager(DefaultProcessor())
+        val manager = DefaultFileProcessorManager()
         val key = "key"
         // Start tracking file.
         manager.startTrackingFile(tempDir, key, false)
             .toCompletableFuture().get()
 
         // Create simple listener.
-        manager.listenForInitial(key)
-            .split(async = async) { it }
+        manager.listenForKey(key)
             // Send file name as event.
-            .startListening { testAsync.sendEvent(it.name) }
+            .startListening { it.forEach { testAsync.sendEvent(it.name) } }
 
         // --- Test ---
 
@@ -50,7 +46,7 @@ class BasicUsage {
     @Test
     fun `parse single directory files with defaults`() {
         // --- Prepare ---
-        val manager = DefaultFileProcessorManager(DefaultProcessor())
+        val manager = DefaultFileProcessorManager()
         val key = "key"
         // Start tracking file.
         manager.startTrackingFile(tempDir, key, false)
@@ -93,7 +89,7 @@ class BasicUsage {
     @Test
     fun `parse inner directory files with defaults`() {
         // --- Prepare ---
-        val manager = DefaultFileProcessorManager(DefaultProcessor())
+        val manager = DefaultFileProcessorManager()
         val key = "key"
         // Start tracking file.
         manager.startTrackingFile(tempDir, key, true)

@@ -1,14 +1,11 @@
 package com.tsarev.fiotcher.internals.tracker
 
-import com.tsarev.fiotcher.api.InitialEventsBunch
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
-import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
-import java.util.concurrent.Flow
 import kotlin.concurrent.thread
 
 /**
@@ -28,23 +25,7 @@ class FileSystemTrackerTest {
     fun `test two files altering without debounce`() {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = 0, trackCreations = true, trackChanges = true)
-        val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
-            override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
-                // extended pause because of [Thread.sleep(2000)] delays below.
-                testAsync.sendEvent("files changed")
-                item.event
-                    ?.map { it.absolutePath }
-                    ?.sorted()
-                    ?.forEach { testAsync.sendEvent("file $it has been changed") }
-            }
-
-            override fun onError(throwable: Throwable?) = run { }
-            override fun onComplete() = run { }
-            override fun onSubscribe(subscription: Flow.Subscription?) =
-                run { subscription?.request(Long.MAX_VALUE); Unit }
-        }
-        trackerPublisher.subscribe(subscriber)
+        tracker.init(tempDir, callerThreadTestExecutor) {}
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
@@ -78,24 +59,7 @@ class FileSystemTrackerTest {
     fun `test two files altering with debounce`() {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = fileSystemPause * 2, trackCreations = true, trackChanges = true)
-        val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
-            override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
-                // extended pause because of [Thread.sleep(2000)] delays below.
-                testAsync.sendEvent("files changed")
-                item.event
-                    ?.map { it.absolutePath }
-                    ?.sorted()
-                    ?.forEach { testAsync.sendEvent("file $it has been changed") }
-            }
-
-            override fun onError(throwable: Throwable?) = run { }
-            override fun onComplete() = run { }
-            override fun onSubscribe(subscription: Flow.Subscription?) = run {
-                subscription?.request(100); Unit
-            }
-        }
-        trackerPublisher.subscribe(subscriber)
+        tracker.init(tempDir, callerThreadTestExecutor){}
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
@@ -125,24 +89,7 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker =
             FileSystemTracker(debounceTimeoutMs = 0, recursive = true, trackCreations = true, trackChanges = true)
-        val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
-            override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
-                // extended pause because of [Thread.sleep(2000)] delays below.
-                testAsync.sendEvent("files changed")
-                item.event
-                    ?.map { it.absolutePath }
-                    ?.sorted()
-                    ?.forEach { testAsync.sendEvent("file $it has been changed") }
-            }
-
-            override fun onError(throwable: Throwable?) = run { }
-            override fun onComplete() = run { }
-            override fun onSubscribe(subscription: Flow.Subscription?) = run {
-                subscription?.request(100); Unit
-            }
-        }
-        trackerPublisher.subscribe(subscriber)
+        tracker.init(tempDir, callerThreadTestExecutor){}
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
@@ -170,24 +117,7 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker =
             FileSystemTracker(debounceTimeoutMs = 400, recursive = true, trackCreations = true, trackChanges = true)
-        val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
-            override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
-                // extended pause because of [Thread.sleep(2000)] delays below.
-                testAsync.sendEvent("files changed")
-                item.event
-                    ?.map { it.absolutePath }
-                    ?.sorted()
-                    ?.forEach { testAsync.sendEvent("file $it has been changed") }
-            }
-
-            override fun onError(throwable: Throwable?) = run { }
-            override fun onComplete() = run { }
-            override fun onSubscribe(subscription: Flow.Subscription?) = run {
-                subscription?.request(100); Unit
-            }
-        }
-        trackerPublisher.subscribe(subscriber)
+        tracker.init(tempDir, callerThreadTestExecutor){}
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
@@ -216,24 +146,7 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker =
             FileSystemTracker(debounceTimeoutMs = 400, recursive = true, trackCreations = true, trackChanges = true)
-        val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
-            override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
-                // extended pause because of [Thread.sleep(2000)] delays below.
-                testAsync.sendEvent("files changed")
-                item.event
-                    ?.map { it.absolutePath }
-                    ?.sorted()
-                    ?.forEach { testAsync.sendEvent("file $it has been changed") }
-            }
-
-            override fun onError(throwable: Throwable?) = run { }
-            override fun onComplete() = run { }
-            override fun onSubscribe(subscription: Flow.Subscription?) = run {
-                subscription?.request(100); Unit
-            }
-        }
-        trackerPublisher.subscribe(subscriber)
+        tracker.init(tempDir, callerThreadTestExecutor){}
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }

@@ -10,9 +10,24 @@ import java.util.concurrent.TimeUnit
 interface Stoppable {
 
     /**
+     * Is stopping flag.
+     */
+    val isStopping: Boolean
+
+    /**
      * Is stopped flag.
      */
     val isStopped: Boolean
+
+    /**
+     * Is stopped exceptionally flag.
+     */
+    val isStoppedExceptionally: Boolean
+
+    /**
+     * Exception, that cause stopping.
+     */
+    val stoppedException: Throwable?
 
     /**
      * Stop this [Stoppable] asynchronously.

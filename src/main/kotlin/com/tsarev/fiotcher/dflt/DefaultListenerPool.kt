@@ -1,11 +1,11 @@
 package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.*
-import com.tsarev.fiotcher.dflt.flows.SingleSubscriptionSubscriber
+import com.tsarev.fiotcher.dflt.flows.CommonListener
 import com.tsarev.fiotcher.internal.*
 import com.tsarev.fiotcher.internal.flow.ChainingListener
-import com.tsarev.fiotcher.internal.pool.AggregatorPool
 import com.tsarev.fiotcher.internal.pool.ListenerPool
+import com.tsarev.fiotcher.internal.pool.PublisherPool
 import java.util.*
 import java.util.concurrent.*
 import kotlin.collections.HashMap
@@ -13,39 +13,35 @@ import kotlin.collections.HashMap
 /**
  * Default [ListenerPool] implementation.
  */
-class DefaultListenerPool(
+class DefaultListenerPool<InitialT : Any>(
     /**
-     * Aggregators, to listen to.
+     * Initial publishers.
      */
-    private val aggregatorPool: AggregatorPool
-) : ListenerPool, Stoppable {
+    private val publisherPool: PublisherPool<EventWithException<InitialT>>
+) : ListenerPool<InitialT>, Stoppable, StoppableBrakeMixin<Unit> {
 
-    private val brake = Brake<Unit>()
+    override val stopBrake = Brake<Unit>()
 
     /**
      * Registered listeners, by key.
      */
-    private val registeredListeners = ConcurrentHashMap<KClassTypedKey<*>, MutableSet<SingleSubscriptionSubscriber<*>>>()
+    private val registeredListeners = ConcurrentHashMap<String, MutableSet<ChainingListener<*>>>()
 
-    override fun <EventT : Any> registerListener(
-        listener: ChainingListener<EventT>,
-        key: KClassTypedKey<EventT>
-    ): ChainingListener<EventT> {
-        if (listener !is SingleSubscriptionSubscriber<*>)
-            throw FiotcherException("Can't use listeners, other that are created by [DefaultWayStation]")
+    override fun registerListener(
+        listener: ChainingListener<InitialT>,
+        key: String
+    ): ChainingListener<InitialT> {
         // Sync on the pool to handle stopping properly.
         synchronized(this) {
             validateIsStopping { PoolIsStopped() }
             registeredListeners.computeIfAbsent(key) { Collections.synchronizedSet(HashSet()) } += listener
-            // If listener is [SingleSubscriptionSubscriber<*>] and [ChainingListener<EventT>]
-            // so definitely it is also a [SingleSubscriptionSubscriber<EventT>]
-            aggregatorPool.getAggregator(key).subscribe(listener as SingleSubscriptionSubscriber<EventT>)
+            publisherPool.getPublisher(key).subscribe(listener)
         }
-        return createListenerWrapper(key, listener as ChainingListener<EventT>)
+        return createListenerWrapper(key, listener)
     }
 
 
-    override fun deRegisterListener(key: KClassTypedKey<*>, force: Boolean): CompletionStage<*> {
+    override fun deRegisterListener(key: String, force: Boolean): CompletionStage<*> {
         validateIsStopping { PoolIsStopped() }
         // Check if we need to de register anything.
         val deRegistered = registeredListeners[key]
@@ -54,9 +50,7 @@ class DefaultListenerPool(
         ) else CompletableFuture.completedFuture(Unit)
     }
 
-    override val isStopped get() = brake.get() != null
-
-    override fun stop(force: Boolean) = brake.push { brk ->
+    override fun doStop(force: Boolean, exception: Throwable?) = stopBrake.push {
         val listenersCopy = HashMap(registeredListeners)
         val allListenersStopFuture =
             if (listenersCopy.isEmpty()) CompletableFuture.completedFuture(Unit)
@@ -65,15 +59,15 @@ class DefaultListenerPool(
                 .reduce { first, second -> first.thenAcceptBoth(second) { _, _ -> } }
         allListenersStopFuture.thenAccept {
             registeredListeners.clear()
-            brk.complete(Unit)
+            complete(Unit)
         }
     }
 
     /**
      * Perform actual listeners de registration.
      */
-    private fun <EventT : Any> doDeRegisterListeners(
-        key: KClassTypedKey<EventT>,
+    private fun doDeRegisterListeners(
+        key: String,
         force: Boolean,
         listeners: Collection<ChainingListener<*>>
     ): CompletionStage<*> {
@@ -87,8 +81,8 @@ class DefaultListenerPool(
     /**
      * Perform actual listener de registration.
      */
-    private fun <EventT : Any> doDeRegisterListener(
-        key: KClassTypedKey<EventT>,
+    private fun doDeRegisterListener(
+        key: String,
         force: Boolean,
         listener: ChainingListener<*>
     ): CompletionStage<*> {
@@ -107,7 +101,7 @@ class DefaultListenerPool(
      * Create a handle, that stops the tracker and de registers it.
      */
     private fun <EventT : Any> createListenerWrapper(
-        key: KClassTypedKey<EventT>,
+        key: String,
         listener: ChainingListener<EventT>
     ): ChainingListener<EventT> {
         return object : ChainingListener<EventT> by listener {

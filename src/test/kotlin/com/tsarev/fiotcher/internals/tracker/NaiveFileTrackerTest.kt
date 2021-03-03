@@ -24,28 +24,7 @@ class NaiveFileTrackerTest {
     fun `test two files altering`() {
         // --- Prepare ---
         val tracker = NaiveFileTracker(iterationMinMillis = 40)
-        val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
-            override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
-                try {
-                    testAsync.sendEvent("files changed", required = false)
-                    item.event
-                            ?.filter { it.exists() }
-                            ?.map { it.absolutePath }
-                            ?.sorted()
-                            ?.forEach { testAsync.sendEvent("file $it has been changed", required = false) }
-                } catch (interrupted: InterruptedException) {
-                    // If interrupt got us here, so we need to stop tracker.
-                    tracker.stop(true)
-                }
-            }
-
-            override fun onError(throwable: Throwable?) = run { }
-            override fun onComplete() = run { }
-            override fun onSubscribe(subscription: Flow.Subscription?) =
-                run { subscription?.request(Long.MAX_VALUE); Unit }
-        }
-        trackerPublisher.subscribe(subscriber)
+        tracker.init(tempDir, callerThreadTestExecutor) {}
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
@@ -84,23 +63,7 @@ class NaiveFileTrackerTest {
     fun `test altering file in nested directory`() {
         // --- Prepare ---
         val tracker = NaiveFileTracker()
-        val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
-            override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
-                testAsync.sendEvent("files changed")
-                item.event
-                    ?.map { it.absolutePath }
-                    ?.sorted()
-                    ?.forEach { testAsync.sendEvent("file $it has been changed") }
-            }
-
-            override fun onError(throwable: Throwable?) = run { }
-            override fun onComplete() = run { }
-            override fun onSubscribe(subscription: Flow.Subscription?) = run {
-                subscription?.request(100); Unit
-            }
-        }
-        trackerPublisher.subscribe(subscriber)
+        tracker.init(tempDir, callerThreadTestExecutor){}
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
@@ -123,23 +86,7 @@ class NaiveFileTrackerTest {
     fun `test gracefully stop`() {
         // --- Prepare ---
         val tracker = NaiveFileTracker()
-        val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
-            override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
-                testAsync.sendEvent("files changed")
-                item.event
-                    ?.map { it.absolutePath }
-                    ?.sorted()
-                    ?.forEach { testAsync.sendEvent("file $it has been changed") }
-            }
-
-            override fun onError(throwable: Throwable?) = run { }
-            override fun onComplete() = run { }
-            override fun onSubscribe(subscription: Flow.Subscription?) = run {
-                subscription?.request(100); Unit
-            }
-        }
-        trackerPublisher.subscribe(subscriber)
+        tracker.init(tempDir, callerThreadTestExecutor){}
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
@@ -164,23 +111,7 @@ class NaiveFileTrackerTest {
     fun `test forcibly stop`() {
         // --- Prepare ---
         val tracker = NaiveFileTracker()
-        val trackerPublisher = tracker.init(tempDir, callerThreadTestExecutor)
-        val subscriber = object : Flow.Subscriber<EventWithException<InitialEventsBunch<File>>> {
-            override fun onNext(item: EventWithException<InitialEventsBunch<File>>) {
-                testAsync.sendEvent("files changed")
-                item.event
-                    ?.map { it.absolutePath }
-                    ?.sorted()
-                    ?.forEach { testAsync.sendEvent("file $it has been changed") }
-            }
-
-            override fun onError(throwable: Throwable?) = run { }
-            override fun onComplete() = run { }
-            override fun onSubscribe(subscription: Flow.Subscription?) = run {
-                subscription?.request(100); Unit
-            }
-        }
-        trackerPublisher.subscribe(subscriber)
+        tracker.init(tempDir, callerThreadTestExecutor){}
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }

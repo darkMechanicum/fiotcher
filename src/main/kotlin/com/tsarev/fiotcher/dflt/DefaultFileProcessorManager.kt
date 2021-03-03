@@ -1,18 +1,25 @@
 package com.tsarev.fiotcher.dflt
 
-import com.tsarev.fiotcher.api.*
+import com.tsarev.fiotcher.api.FileProcessorManager
+import com.tsarev.fiotcher.api.InitialEventsBunch
+import com.tsarev.fiotcher.api.ProcessorManager
+import com.tsarev.fiotcher.api.Stoppable
+import com.tsarev.fiotcher.dflt.flows.CommonListener
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
-import com.tsarev.fiotcher.dflt.trackers.NaiveFileTracker
 import com.tsarev.fiotcher.internal.Processor
 import com.tsarev.fiotcher.internal.flow.ChainingListener
-import com.tsarev.fiotcher.internal.flow.WayStation
 import java.io.File
 import java.util.concurrent.CompletionStage
-import java.util.concurrent.Executor
-import kotlin.reflect.KClass
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class DefaultFileProcessorManager(
-    override val processor: Processor<File> = DefaultProcessor()
+    /**
+     * Executor service, used for processing.
+     */
+    private val executorService: ExecutorService = Executors.newCachedThreadPool(),
+
+    private val processor: Processor<File> = DefaultProcessor(executorService)
 ) : FileProcessorManager, Stoppable by processor {
 
     override fun startTrackingFile(path: File, key: String, recursively: Boolean): CompletionStage<out Stoppable> {
@@ -24,116 +31,57 @@ class DefaultFileProcessorManager(
         return processor.stopTracker(resource, key, force)
     }
 
-    override fun listenForInitial(key: String): ProcessorManager.ListenerBuilder<InitialEventsBunch<File>> {
-        return ListenerBuilderInitial(key.typedKey())
+    override fun listenForKey(key: String): ProcessorManager.ListenerBuilder<InitialEventsBunch<File>> {
+        return ListenerBuilderInitial { processor.registerListener(it, key) }
     }
 
-    override fun stopListeningInitial(key: String, force: Boolean) =
-        processor.deRegisterListener(key.typedKey<InitialEventsBunch<File>>(), force)
-
-    override fun <EventT : ProcessorManager.EventMarker> listenForKey(
-        key: String,
-        type: KClass<EventT>
-    ): ProcessorManager.ListenerBuilder<EventT> {
-        return ListenerBuilderInitial(key.typedKey(type))
-    }
-
-    override fun <EventT : ProcessorManager.EventMarker> stopListening(
-        key: String,
-        type: KClass<EventT>,
-        force: Boolean
-    ) = processor.deRegisterListener(key.typedKey(type), force)
+    override fun stopListening(key: String, force: Boolean) =
+        processor.deRegisterListener(key, force)
 
     abstract inner class DefaultListenerBuilderBase<InitialT : Any, EventT : Any, PreviousT : Any>(
-        private val key: KClassTypedKey<InitialT>
+        private val registerListener: (ChainingListener<InitialEventsBunch<InitialT>>) -> Stoppable
     ) : ProcessorManager.ListenerBuilder<EventT> {
 
-        override fun <NextT : Any> chain(
+        override fun <NextT : Any> delegateAsync(
             handleErrors: ((Throwable) -> Throwable?)?,
-            async: Boolean,
-            executor: Executor?,
-            transformer: (EventT) -> NextT?
-        ) = ListenerBuilderIntermediate<InitialT, NextT, EventT>(
-            key, this
-        ) {
-            if (async) {
-                it.asyncChainFrom(transformer = transformer, handleErrors = handleErrors, executor = executor)
-            } else {
-                it.syncChainFrom(transformer = transformer, handleErrors = handleErrors)
-            }
-        }
-
-        override fun <NextT : Any> split(
-            handleErrors: ((Throwable) -> Throwable?)?,
-            async: Boolean,
-            executor: Executor?,
-            transformer: (EventT) -> Collection<NextT?>?
-        ) = ListenerBuilderIntermediate<InitialT, NextT, EventT>(
-            key, this
-        ) {
-            if (async) {
-                it.asyncSplitFrom(transformer = transformer, handleErrors = handleErrors, executor = executor)
-            } else {
-                it.syncSplitFrom(transformer = transformer, handleErrors = handleErrors)
-            }
-        }
-
-        override fun <NextT : Any> delegate(
-            handleErrors: ((Throwable) -> Throwable?)?,
-            async: Boolean,
-            executor: Executor?,
             transformer: (EventT, (NextT) -> Unit) -> Unit
         ) = ListenerBuilderIntermediate<InitialT, NextT, EventT>(
-            key, this
+            registerListener, this
         ) {
-            if (async) {
-                it.asyncDelegateFrom(transformer = transformer, handleErrors = handleErrors, executor = executor)
-            } else {
-                it.syncDelegateFrom(transformer = transformer, handleErrors = handleErrors)
-            }
+            it.asyncDelegateFrom(
+                executor = executorService,
+                maxCapacity = 256,
+                transformer = transformer,
+                handleErrors = handleErrors
+            )
         }
 
         override fun startListening(
             handleErrors: ((Throwable) -> Throwable?)?,
             listener: (EventT) -> Unit
         ): Stoppable {
-            val lastListener = processor.createCommonListener(
-                listener = listener,
-                handleErrors = handleErrors
-            )
+            val lastListener = CommonListener(handleErrors = handleErrors, listener = listener)
             val initialListener = chain(lastListener)
-            return processor.registerListener(initialListener, key)
+            return registerListener(initialListener)
         }
 
-        override fun doAggregate(
-            handleErrors: ((Throwable) -> Throwable?)?,
-            key: KClassTypedKey<EventT>
-        ) {
-            val lastListener = processor.doAggregate(
-                key = key,
-                handleErrors = handleErrors
-            )
-            val initialListener = chain(lastListener)
-            processor.registerListener(initialListener, this.key)
-        }
-
-        abstract fun chain(current: ChainingListener<EventT>): ChainingListener<InitialT>
+        abstract fun chain(current: ChainingListener<EventT>): ChainingListener<InitialEventsBunch<InitialT>>
 
     }
 
     inner class ListenerBuilderInitial<InitialT : Any>(
-        key: KClassTypedKey<InitialT>
-    ) : DefaultListenerBuilderBase<InitialT, InitialT, Unit>(key) {
-        override fun chain(current: ChainingListener<InitialT>) = current
+        registerListener: (ChainingListener<InitialEventsBunch<InitialT>>) -> Stoppable
+    ) : DefaultListenerBuilderBase<InitialT, InitialEventsBunch<InitialT>, Unit>(registerListener) {
+        override fun chain(current: ChainingListener<InitialEventsBunch<InitialT>>) = current
     }
 
     inner class ListenerBuilderIntermediate<InitialT : Any, EventT : Any, PreviousT : Any>(
-        key: KClassTypedKey<InitialT>,
+        registerListener: (ChainingListener<InitialEventsBunch<InitialT>>) -> Stoppable,
         private val prev: DefaultListenerBuilderBase<InitialT, PreviousT, *>,
-        private val chainer: (WayStation.(ChainingListener<EventT>) -> ChainingListener<PreviousT>),
-    ) : DefaultListenerBuilderBase<InitialT, EventT, PreviousT>(key) {
-        override fun chain(current: ChainingListener<EventT>): ChainingListener<InitialT> {
-            val previous = processor.chainer(current)
+        private val chainer: ((ChainingListener<EventT>) -> ChainingListener<PreviousT>),
+    ) : DefaultListenerBuilderBase<InitialT, EventT, PreviousT>(registerListener) {
+        override fun chain(current: ChainingListener<EventT>): ChainingListener<InitialEventsBunch<InitialT>> {
+            val previous = chainer(current)
             return prev.chain(previous)
         }
     }

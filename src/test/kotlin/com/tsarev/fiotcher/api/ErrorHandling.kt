@@ -1,15 +1,12 @@
 package com.tsarev.fiotcher.api
 
 import com.tsarev.fiotcher.dflt.DefaultFileProcessorManager
-import com.tsarev.fiotcher.dflt.DefaultProcessor
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.ValueSource
 import java.io.File
 import java.io.FileNotFoundException
-import java.io.FileReader
 import java.io.IOException
 
 class ErrorHandling {
@@ -19,30 +16,23 @@ class ErrorHandling {
 
     private val testAsync = AsyncTestEvents()
 
-    @ParameterizedTest
-    @ValueSource(booleans = [true, false])
-    fun `handle error with single sync listener`(async: Boolean) {
+    @Test
+    fun `handle error with single sync listener`() {
         // --- Prepare ---
-        val testExecutor = acquireExecutor()
-        val manager = DefaultFileProcessorManager(
-            DefaultProcessor(
-                aggregatorExecutorService = testExecutor
-            )
-        )
+        val manager = DefaultFileProcessorManager()
         val key = "key"
         // Start tracking file.
         manager.startTrackingFile(tempDir, key, false)
             .toCompletableFuture().get()
 
         // Create listener.
-        manager.listenForInitial(key)
-            .split(async = async) { it }
+        manager.listenForKey(key)
             // Send file content as event, or IOException message, if present.
             .startListening(handleErrors = {
                 if (it is IOException) testAsync.sendEvent(it).let { null } else it
-            }) { file ->
+            }) { files ->
                 // Try read from file.
-                FileReader(file).use { it.read() }
+                files.forEach { file -> throw FileNotFoundException(file.absolutePath) }
             }
 
         // --- Test ---
@@ -52,20 +42,18 @@ class ErrorHandling {
         Thread.sleep(fileSystemPause)
         file.delete()
 
-        // Activate executor.
-        testExecutor.activate {
-            // Check that event was passed.
-            testAsync.assertEvent<FileNotFoundException> {
-                Assertions.assertTrue(it.message?.contains(file.absolutePath) ?: false)
-            }
+        // Check that event was passed.
+        testAsync.assertEvent<FileNotFoundException> {
+            Assertions.assertTrue(it.message?.contains(file.absolutePath) ?: false)
         }
+
+        println()
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans = [true, false])
-    fun `interrupt chain while handling errors`(async: Boolean) {
+    @Test
+    fun `interrupt chain while handling errors`() {
         // --- Prepare ---
-        val manager = DefaultFileProcessorManager(DefaultProcessor())
+        val manager = DefaultFileProcessorManager()
         val key = "key"
         // Start tracking file.
         manager.startTrackingFile(tempDir, key, false)
@@ -76,9 +64,8 @@ class ErrorHandling {
         class ContinueException : RuntimeException()
 
         // Create listener.
-        manager.listenForInitial(key)
-            .delegate<File>(
-                async = async,
+        manager.listenForKey(key)
+            .delegateAsync<File>(
                 // Break the chain if [StopException] occurred.
                 handleErrors = { if (it is StopException) throw it else it }
             ) { it, publish ->

@@ -1,7 +1,5 @@
 package com.tsarev.fiotcher.internal.pool
 
-import com.tsarev.fiotcher.api.KClassTypedKey
-import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.internal.flow.ChainingListener
 import java.util.concurrent.CompletionStage
 
@@ -9,21 +7,21 @@ import java.util.concurrent.CompletionStage
  * Listener registry used to synchronize [ChainingListener]
  * registration and de registration.
  */
-interface ListenerPool : Stoppable {
+interface ListenerPool<InitialT : Any> {
 
     /**
      * Register listener.
      */
-    fun <EventT : Any> registerListener(
-        listener: ChainingListener<EventT>,
-        key: KClassTypedKey<EventT>
-    ): ChainingListener<EventT>
+    fun registerListener(
+        listener: ChainingListener<InitialT>,
+        key: String
+    ): ChainingListener<InitialT>
 
     /**
      * De register listener.
      */
     fun deRegisterListener(
-        key: KClassTypedKey<*>,
+        key: String,
         force: Boolean = false
     ): CompletionStage<*>
 

@@ -1,10 +1,10 @@
 package com.tsarev.fiotcher.internals.pool
 
-import com.tsarev.fiotcher.api.typedKey
-import com.tsarev.fiotcher.dflt.DefaultAggregatorPool
 import com.tsarev.fiotcher.dflt.DefaultListenerPool
+import com.tsarev.fiotcher.dflt.DefaultPublisherPool
 import com.tsarev.fiotcher.dflt.flows.CommonListener
-import com.tsarev.fiotcher.dflt.flows.DelegatingAsyncTransformer
+import com.tsarev.fiotcher.dflt.flows.DelegatingAsyncChainListener
+import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.asSuccess
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.AfterEach
@@ -26,24 +26,17 @@ class DefaultListenerPoolTest {
     @Test
     fun `synchronous send single event for registered listener`() {
         // --- Prepare ---
-        val aggregatorPool = DefaultAggregatorPool(
-            100,
-            callerThreadTestExecutor,
-            callerThreadTestExecutor
-        )
-        val key = "key".typedKey<String>()
-        val pool = DefaultListenerPool(aggregatorPool)
-        val listener = CommonListener<String>(
-            onNextHandler = { testSync.sendEvent(it) },
-            onSubscribeHandler = { testSync.sendEvent("subscribed") },
-        )
-        val aggregator = aggregatorPool.getAggregator(key)
+        val key = "key"
+        val defaultPublisherPool = DefaultPublisherPool<EventWithException<String>>(callerThreadTestExecutor, 256)
+        val pool = DefaultListenerPool(defaultPublisherPool)
+        val listener = CommonListener<String> { testSync.sendEvent(it) }
+        val publisher = defaultPublisherPool.getPublisher(key)
 
         // --- Test ---
         val listenerHandle = pool.registerListener(listener, key)
         testSync.assertEvent("subscribed")
 
-        aggregator.onNext("item".asSuccess())
+        publisher.submit("item".asSuccess())
         testSync.assertEvent("item")
 
         pool.deRegisterListener(key)
@@ -54,22 +47,12 @@ class DefaultListenerPoolTest {
     @Test
     fun `synchronous send single event for two registered listeners`() {
         // --- Prepare ---
-        val aggregatorPool = DefaultAggregatorPool(
-            100,
-            callerThreadTestExecutor,
-            callerThreadTestExecutor
-        )
-        val key = "key".typedKey<String>()
-        val pool = DefaultListenerPool(aggregatorPool)
-        val firstListener = CommonListener<String>(
-            onNextHandler = { testSync.sendEvent("first $it") },
-            onSubscribeHandler = { testSync.sendEvent("first subscribed") },
-        )
-        val secondListener = CommonListener<String>(
-            onNextHandler = { testSync.sendEvent("second $it") },
-            onSubscribeHandler = { testSync.sendEvent("second subscribed") },
-        )
-        val aggregator = aggregatorPool.getAggregator(key)
+        val defaultPublisherPool = DefaultPublisherPool<EventWithException<String>>(callerThreadTestExecutor, 256)
+        val key = "key"
+        val pool = DefaultListenerPool(defaultPublisherPool)
+        val firstListener = CommonListener<String> { testSync.sendEvent("first $it") }
+        val secondListener = CommonListener<String> { testSync.sendEvent("second $it") }
+        val publisher = defaultPublisherPool.getPublisher(key)
 
         // --- Test ---
         val firstListenerHandle = pool.registerListener(firstListener, key)
@@ -78,7 +61,7 @@ class DefaultListenerPoolTest {
         testSync.assertEvent("second subscribed")
         testSync.assertNoEvent()
 
-        aggregator.onNext("item".asSuccess())
+        publisher.submit("item".asSuccess())
         testSync.assertEvent("first item")
         testSync.assertEvent("second item")
         testSync.assertNoEvent()
@@ -87,7 +70,7 @@ class DefaultListenerPoolTest {
         Assertions.assertTrue(firstListenerHandle.isStopped)
         Assertions.assertTrue(firstListener.isStopped)
 
-        aggregator.onNext("item".asSuccess())
+        publisher.submit("item".asSuccess())
         testSync.assertEvent("second item")
         testSync.assertNoEvent()
 
@@ -95,7 +78,7 @@ class DefaultListenerPoolTest {
         Assertions.assertTrue(secondListenerHandle.isStopped)
         Assertions.assertTrue(secondListener.isStopped)
 
-        aggregator.onNext("item".asSuccess())
+        publisher.submit("item".asSuccess())
         testSync.assertNoEvent()
     }
 
@@ -103,12 +86,8 @@ class DefaultListenerPoolTest {
     @ValueSource(booleans = [true, false])
     fun `synchronous listener double stop`(force: Boolean) {
         // --- Prepare ---
-        val aggregatorPool = DefaultAggregatorPool(
-            100,
-            callerThreadTestExecutor,
-            callerThreadTestExecutor
-        )
-        val pool = DefaultListenerPool(aggregatorPool)
+        val defaultPublisherPool = DefaultPublisherPool<EventWithException<String>>(callerThreadTestExecutor, 256)
+        val pool = DefaultListenerPool(defaultPublisherPool)
 
         // --- Test ---
         val firstHandle = pool.stop(force)
@@ -130,26 +109,18 @@ class DefaultListenerPoolTest {
             { testAsync.sendEvent("aggregator executor start") },
             { testAsync.sendEvent("aggregator executor finished") }
         )
-        val key = "key".typedKey<String>()
-        val aggregatorPool = DefaultAggregatorPool(
-            100,
-            aggregatorExecutor,
-            callerThreadTestExecutor
-        )
-        val pool = DefaultListenerPool(aggregatorPool)
-        val chained = CommonListener<String>(
-            onNextHandler = { testAsync.sendEvent("chained $it") },
-            onSubscribeHandler = { testAsync.sendEvent("chained subscribed") }
-        )
-        val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
+        val key = "key"
+        val defaultPublisherPool = DefaultPublisherPool<EventWithException<String>>(aggregatorExecutor, 256)
+        val pool = DefaultListenerPool(defaultPublisherPool)
+        val chained = CommonListener<String> { testSync.sendEvent(it) }
+        val listener = DelegatingAsyncChainListener<String, String, CommonListener<String>>(
             executor = listenerExecutor,
             maxCapacity = 10,
             chained = chained,
-            stoppingExecutor = callerThreadTestExecutor,
-            onSubscribeHandler = { testAsync.sendEvent("subscribed") },
             transform = { it, publish -> testAsync.sendEvent(it); publish(it) },
             handleErrors = null
         )
+        val publisher = defaultPublisherPool.getPublisher(key)
 
         // --- Test ---
         // Check chained subscription is ok.
@@ -168,8 +139,7 @@ class DefaultListenerPoolTest {
         }
 
         // Check message was received from aggregator.
-        val aggregator = aggregatorPool.getAggregator(key)
-        aggregator.onNext("item".asSuccess())
+        publisher.submit("item".asSuccess())
         aggregatorExecutor.activate {
             testAsync.assertEvent("aggregator executor start")
             testAsync.assertEvent("item")
@@ -210,31 +180,18 @@ class DefaultListenerPoolTest {
             { testAsync.sendEvent("listener stopping executor start") },
             { testAsync.sendEvent("listener stopping executor finished") }
         )
-        val aggregatorStoppingExecutor = acquireExecutor(
-            name = "aggregator stopping executor",
-            { testAsync.sendEvent("aggregator stopping executor start") },
-            { testAsync.sendEvent("aggregator stopping executor finished") }
-        )
-        val key = "key".typedKey<String>()
-        val aggregatorPool = DefaultAggregatorPool(
-            100,
-            aggregatorExecutor,
-            aggregatorStoppingExecutor
-        )
-        val pool = DefaultListenerPool(aggregatorPool)
-        val chained = CommonListener<String>(
-            onNextHandler = { testAsync.sendEvent("chained $it") },
-            onSubscribeHandler = { testAsync.sendEvent("chained subscribed") }
-        )
-        val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
+        val key = "key"
+        val defaultPublisherPool = DefaultPublisherPool<EventWithException<String>>(aggregatorExecutor, 256)
+        val pool = DefaultListenerPool(defaultPublisherPool)
+        val chained = CommonListener<String> { testSync.sendEvent(it) }
+        val listener = DelegatingAsyncChainListener<String, String, CommonListener<String>>(
             executor = listenerExecutor,
             maxCapacity = 10,
             chained = chained,
-            stoppingExecutor = listenerStoppingExecutor,
-            onSubscribeHandler = { testAsync.sendEvent("subscribed") },
             transform = { it, publish -> testAsync.sendEvent(it); publish(it) },
             handleErrors = null
         )
+        val publisher = defaultPublisherPool.getPublisher(key)
 
         // --- Test ---
         // Check chained subscription is ok.
@@ -253,8 +210,7 @@ class DefaultListenerPoolTest {
         }
 
         // Check message was received from aggregator.
-        val aggregator = aggregatorPool.getAggregator(key)
-        aggregator.onNext("item".asSuccess())
+        publisher.submit("item".asSuccess())
         aggregatorExecutor.activate {
             // Message from aggregator is not processed by listener yet, but will be.
             testAsync.assertEvent("aggregator executor start")
@@ -320,31 +276,18 @@ class DefaultListenerPoolTest {
             { testAsync.sendEvent("listener stopping executor start") },
             { testAsync.sendEvent("listener stopping executor finished") }
         )
-        val aggregatorStoppingExecutor = acquireExecutor(
-            name = "aggregator stopping executor",
-            { testAsync.sendEvent("aggregator stopping executor start") },
-            { testAsync.sendEvent("aggregator stopping executor finished") }
-        )
-        val key = "key".typedKey<String>()
-        val aggregatorPool = DefaultAggregatorPool(
-            100,
-            aggregatorExecutor,
-            aggregatorStoppingExecutor
-        )
-        val pool = DefaultListenerPool(aggregatorPool)
-        val chained = CommonListener<String>(
-            onNextHandler = { testAsync.sendEvent("chained $it") },
-            onSubscribeHandler = { testAsync.sendEvent("chained subscribed") }
-        )
-        val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
+        val key = "key"
+        val defaultPublisherPool = DefaultPublisherPool<EventWithException<String>>(aggregatorExecutor, 256)
+        val pool = DefaultListenerPool(defaultPublisherPool)
+        val chained = CommonListener<String> { testAsync.sendEvent("chained $it") }
+        val listener = DelegatingAsyncChainListener<String, String, CommonListener<String>>(
             executor = listenerExecutor,
             maxCapacity = 10,
             chained = chained,
-            stoppingExecutor = listenerStoppingExecutor,
-            onSubscribeHandler = { testAsync.sendEvent("subscribed") },
             transform = { it, publish -> testAsync.sendEvent(it); publish(it) },
             handleErrors = null
         )
+        val publisher = defaultPublisherPool.getPublisher(key)
 
         // --- Test ---
         // Check chained subscription is ok.
@@ -363,8 +306,7 @@ class DefaultListenerPoolTest {
         }
 
         // Check message was received from aggregator.
-        val aggregator = aggregatorPool.getAggregator(key)
-        aggregator.onNext("item".asSuccess())
+        publisher.submit("item".asSuccess())
         aggregatorExecutor.activate {
             // Message from aggregator is not processed by listener yet, but will be.
             testAsync.assertEvent("aggregator executor start")
@@ -397,17 +339,11 @@ class DefaultListenerPoolTest {
     @Test
     fun `synchronous listener handle stopping`() {
         // --- Prepare ---
-        val key = "key".typedKey<String>()
-        val aggregatorPool = DefaultAggregatorPool(
-            100,
-            callerThreadTestExecutor,
-            callerThreadTestExecutor
-        )
-        val pool = DefaultListenerPool(aggregatorPool)
-        val firstListener = CommonListener<String>(
-            onNextHandler = { }, onCompleteHandler = { testSync.sendEvent("canceled") }
-        )
-        val secondListener = CommonListener<String>({ }, onSubscribeHandler = { testSync.sendEvent("subscribed") })
+        val key = "key"
+        val defaultPublisherPool = DefaultPublisherPool<EventWithException<String>>(callerThreadTestExecutor, 256)
+        val pool = DefaultListenerPool(defaultPublisherPool)
+        val firstListener = CommonListener<String> { }
+        val secondListener = CommonListener<String> { }
 
         // --- Test ---
         val handle = pool.registerListener(firstListener, key)

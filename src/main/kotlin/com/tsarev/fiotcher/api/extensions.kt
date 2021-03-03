@@ -18,18 +18,22 @@ import kotlin.collections.HashMap
  * Handle changed files lines asynchronously.
  * For details see [ProcessorManager.listenForInitial]
  */
-fun FileProcessorManager.handleLines(key: String, linesAsync: Boolean = true, linedListener: (String) -> Unit) = listenForInitial(key)
-    .delegate<File>(async = true) { bunch, publisher -> bunch.forEach { publisher(it) } }
-    .chain { getStreamOrNull(it) }
-    .split(async = linesAsync) { with(Scanner(it)) { mutableListOf<String>().also { while (hasNextLine()) it += nextLine() } } }
-    .startListening { linedListener(it) }
+fun FileProcessorManager.handleLines(key: String, linedListener: (String) -> Unit) = listenForKey(key)
+    .delegateAsync<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
+    .startListening {
+        val stream = getStreamOrNull(it)
+        if (stream != null) {
+            val lines = with(Scanner(it)) { mutableListOf<String>().also { while (hasNextLine()) it += nextLine() } }
+            lines.forEach(linedListener)
+        }
+    }
 
 /**
  * Handle changed files asynchronously.
  * For details see [ProcessorManager.listenForInitial]
  */
-fun FileProcessorManager.handleFiles(key: String, fileListener: (File) -> Unit) = listenForInitial(key)
-    .delegate<File>(async = true) { bunch, publisher -> bunch.forEach { publisher(it) } }
+fun FileProcessorManager.handleFiles(key: String, fileListener: (File) -> Unit) = listenForKey(key)
+    .delegateAsync<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
     .startListening { fileListener(it) }
 
 val defaultSaxParser = SAXParserFactory.newInstance().newSAXParser()!!
@@ -56,26 +60,27 @@ fun FileProcessorManager.handleSax(
     customSaxParser: SAXParser? = null,
     parsingErrorHandler: ((SAXException) -> Unit)? = null,
     saxListener: (SaxEvent) -> Unit
-) = listenForInitial(key)
-    .delegate<File>(async = true) { bunch, publisher -> bunch.forEach { publisher(it) } }
-    .chain { getStreamOrNull(it) }
-    .delegate<SaxEvent>(handleErrors = {
-        if (it is SAXException) parsingErrorHandler?.let { it1 -> it1(it) }
-            .let { null } else it
-    }) { stream, notifier ->
+) = listenForKey(key)
+    .delegateAsync<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
+    .startListening(
+        handleErrors = {
+            if (it is SAXException) parsingErrorHandler?.let { it1 -> it1(it) }
+                .let { null } else it
+        }
+    ) {
         val elements = HashMap<String, Deque<Map<String, String>>>()
-        (customSaxParser ?: defaultSaxParser).parse(stream, object : DefaultHandler() {
+        (customSaxParser ?: defaultSaxParser).parse(it, object : DefaultHandler() {
             override fun startElement(uri: String?, localName: String?, qName: String?, attributes: Attributes) =
                 if (qName != null) elements.computeIfAbsent(qName) { LinkedList() }.addFirst(attributes.toMap())
                     .let {} else Unit
 
             override fun endElement(uri: String?, localName: String?, qName: String?) =
-                qName?.let { elements.remove(it) }?.peekFirst()?.let { notifier(SaxEvent(qName, uri, localName, it)) }
+                qName?.let { elements.remove(it) }?.peekFirst()
+                    ?.let { saxListener(SaxEvent(qName, uri, localName, it)) }
                     ?: Unit
         })
         elements.clear()
     }
-    .startListening { saxListener(it) }
 
 private fun Attributes.toMap() = mutableMapOf<String, String>().apply {
     for (i in 0..length) {
@@ -95,9 +100,8 @@ fun FileProcessorManager.handleDom(
     key: String,
     customDomParser: DocumentBuilder? = null,
     domListener: (Document) -> Unit
-) = listenForInitial(key)
-    .delegate<File>(async = true) { bunch, publisher -> bunch.forEach { publisher(it) } }
-    .chain { getStreamOrNull(it) }
+) = listenForKey(key)
+    .delegateAsync<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
     .startListening { val document = (customDomParser ?: defaultDomParser).parse(it); domListener(document) }
 
 /**

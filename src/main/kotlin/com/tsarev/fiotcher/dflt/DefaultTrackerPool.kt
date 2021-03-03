@@ -2,7 +2,7 @@ package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.*
 import com.tsarev.fiotcher.internal.EventWithException
-import com.tsarev.fiotcher.internal.pool.AggregatorPool
+import com.tsarev.fiotcher.internal.pool.PublisherPool
 import com.tsarev.fiotcher.internal.pool.Tracker
 import com.tsarev.fiotcher.internal.pool.TrackerPool
 import java.util.concurrent.*
@@ -14,38 +14,27 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 class DefaultTrackerPool<WatchT : Any>(
     /**
-     * Executor, used to run trackers.
+     * Executor service, used by this pool.
      */
-    private val trackerExecutor: ExecutorService,
+    private val executorService: ExecutorService,
 
     /**
-     * Executor, used to perform queue submission and processing by aggregators and trackers.
+     * [PublisherPool] to get publisher for key.
      */
-    private val trackerExecutorService: Executor,
-
-    /**
-     * Executor, used to perform trackers registration process.
-     */
-    private val registrationExecutorService: ExecutorService,
-
-    /**
-     * [AggregatorPool] for aggregator synchronous access.
-     */
-    private val aggregatorPool: AggregatorPool
-) : TrackerPool<WatchT> {
+    private val publisherPool: PublisherPool<EventWithException<InitialEventsBunch<WatchT>>>
+) : TrackerPool<WatchT>, StoppableBrakeMixin<Unit> {
 
     /**
      * Mock no-op tracker.
      */
-    private val mockTracker = object : Tracker<WatchT>() {
-        override val isStopped = true
-        override fun doStop(force: Boolean) = CompletableFuture.completedFuture(Unit)
+    private val mockTracker = object : Tracker<WatchT>(), StoppableBrakeMixin<Unit> {
+        override val stopBrake = Brake<Unit>().apply { pushCompleted(Unit) {} }
+        override fun doStop(force: Boolean, exception: Throwable?): CompletionStage<*> =
+            stopBrake.pushCompleted(Unit) {}
+
         override fun run() = run { }
-        override fun doInit(executor: Executor) =
-            object : Flow.Publisher<EventWithException<InitialEventsBunch<WatchT>>> {
-                override fun subscribe(subscriber: Flow.Subscriber<in EventWithException<InitialEventsBunch<WatchT>>>?) =
-                    run { }
-            }
+        override fun doInit(executor: Executor, sendEvent: (EventWithException<InitialEventsBunch<WatchT>>) -> Unit) =
+            run {}
     }
 
     /**
@@ -65,7 +54,7 @@ class DefaultTrackerPool<WatchT : Any>(
     /**
      * Stopping brake.
      */
-    private val brake = Brake<Unit>()
+    override val stopBrake = Brake<Unit>()
 
     override fun startTracker(
         resourceBundle: WatchT,
@@ -87,24 +76,21 @@ class DefaultTrackerPool<WatchT : Any>(
 
         // We shall call submit here, since tracker [init] method is potentially time consuming.
         // It can, for example, include recursive directory scanning, or remote repository initial fetching.
-        val submissionHandle = registrationExecutorService.submit {
+        val submissionHandle = executorService.submit {
             // Stop silently if pool is stopped. Tracker will be stopped by [stop] method, since it is in the map already.
             if (this@DefaultTrackerPool.isStopped) return@submit
 
             val wrappedTracker: Tracker<WatchT>?
             val currentThread = Thread.currentThread()
             try {
-                // We don't need additional type info, since there can only be one tracker by string key.
-                val asTyped = key.typedKey<InitialEventsBunch<WatchT>>()
                 // Try to init tracker and subscribe to its publisher.
                 // Can throw exception due to pool stopping, but we will handle it later.
-                val targetAggregator = aggregatorPool.getAggregator(asTyped)
-                val trackerPublisher = tracker.init(resourceBundle, trackerExecutorService)
-                trackerPublisher.subscribe(targetAggregator)
+                val publisher = publisherPool.getPublisher(key)
+                tracker.init(resourceBundle, executorService) { publisher.submit(it) }
 
                 // Start tracker. From now he is treated like started.
                 if (!currentThread.isInterrupted) {
-                    val handle = trackerExecutor.submit(tracker)
+                    val handle = executorService.submit(tracker)
                     wrappedTracker = createTrackerWrapper(resourceBundle, key, tracker)
                     val newTracker = registeredTrackers.computeIfPresent(trackerKey) { _, old ->
                         // Check if we are replacing ourselves.
@@ -163,20 +149,17 @@ class DefaultTrackerPool<WatchT : Any>(
         }
     }
 
-
-    override val isStopped get() = brake.get() != null
-
-    override fun stop(force: Boolean) = brake.push { brk ->
+    override fun doStop(force: Boolean, exception: Throwable?) = stopBrake.push {
         val trackersCopy = HashMap(registeredTrackers)
         val allTrackersStopFuture = trackersCopy
             .map { (key, value) -> doStopTracker(key.first, key.second, force, value.tracker) }
-            .reduce { first, second -> first.thenAcceptBoth(second) { _, _ -> } }
+            .reduce { first, second -> first.thenAcceptBoth(second) { _, _ -> }.thenApply { } }
 
         // Combine all futures in one and clear resources after their completion.
         // Order matters here.
         allTrackersStopFuture.thenAccept {
             registeredTrackers.clear()
-            brk.complete(Unit)
+            if (exception != null) completeExceptionally(exception) else complete(Unit)
         }
     }
 
@@ -188,19 +171,19 @@ class DefaultTrackerPool<WatchT : Any>(
         key: String,
         tracker: Tracker<WatchT>
     ): Tracker<WatchT> {
-        return object : Tracker<WatchT>() {
-            override val isStopped: Boolean
-                get() = this@DefaultTrackerPool.isStopped || tracker.isStopped
+        return object : Tracker<WatchT>(), DoStopMixin<Unit> by tracker {
+            // Also deregister tracker when stop is requested.
+            override fun doStop(force: Boolean, exception: Throwable?): CompletionStage<Unit> =
+                doStopTracker(resourceBundle, key, false, tracker)
 
-            override fun doStop(force: Boolean) =
-                if (!this@DefaultTrackerPool.isStopped) {
-                    doStopTracker(resourceBundle, key, false, tracker)
-                } else {
-                    CompletableFuture.completedFuture(Unit)
-                }
+            // Only tracker pool is allowed to init tracker.
+            override fun doInit(
+                executor: Executor,
+                sendEvent: (EventWithException<InitialEventsBunch<WatchT>>) -> Unit
+            ) = run {}
 
-            override fun doInit(executor: Executor) = tracker.doInit(executor)
-            override fun run() = tracker.run()
+            // Only tracker pool is allowed to start tracker execution.
+            override fun run() = run {}
         }
     }
 
@@ -215,7 +198,7 @@ class DefaultTrackerPool<WatchT : Any>(
         key: String,
         force: Boolean,
         tracker: Tracker<WatchT>
-    ): CompletableFuture<*> {
+    ): CompletableFuture<Unit> {
         val trackerKey = resourceBundle to key
         val foundInfo = registeredTrackers[trackerKey]
         // Ensure first, that we are stopping the right tracker.

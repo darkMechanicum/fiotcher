@@ -1,7 +1,7 @@
 package com.tsarev.fiotcher.internals.flow
 
 import com.tsarev.fiotcher.dflt.flows.CommonListener
-import com.tsarev.fiotcher.dflt.flows.DelegatingAsyncTransformer
+import com.tsarev.fiotcher.dflt.flows.DelegatingAsyncChainListener
 import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.asSuccess
 import com.tsarev.fiotcher.util.*
@@ -14,9 +14,9 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 
 /**
- * Testing [DelegatingAsyncTransformer].
+ * Testing [DelegatingAsyncChainListener].
  */
-class AsynchronousDelegatingAsyncTransformerTest {
+class AsynchronousDelegatingAsyncChainListenerTest {
 
     private val testAsync = AsyncTestEvents()
 
@@ -28,10 +28,7 @@ class AsynchronousDelegatingAsyncTransformerTest {
     @Test
     fun `asynchronous send two events`() {
         // Prepare.
-        val chained = CommonListener<String>(
-            { testAsync.sendEvent("chained $it") },
-            { testAsync.sendEvent("chained subscribed") }
-        )
+        val chained = CommonListener<String> { testAsync.sendEvent("chained $it") }
         val executor = acquireExecutor(
             name = "executor",
             { testAsync.sendEvent("executor start") },
@@ -40,12 +37,10 @@ class AsynchronousDelegatingAsyncTransformerTest {
         val publisher = SubmissionPublisher<EventWithException<String>>(executor, 10)
 
         // Test.
-        val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
+        val listener = DelegatingAsyncChainListener<String, String, CommonListener<String>>(
             executor = executor,
             maxCapacity = 10,
             chained = chained,
-            stoppingExecutor = executor,
-            onSubscribeHandler = { testAsync.sendEvent("subscribed") },
             transform = { it, publish -> testAsync.sendEvent(it); publish(it) },
             handleErrors = null,
         )
@@ -85,10 +80,7 @@ class AsynchronousDelegatingAsyncTransformerTest {
     @Test
     fun `asynchronous force stop after submit`() {
         // --- Prepare ---
-        val chained = CommonListener<String>(
-            { testAsync.sendEvent("chained $it") },
-            { testAsync.sendEvent("chained subscribed") }
-        )
+        val chained = CommonListener<String> { testAsync.sendEvent("chained $it") }
         val executor = acquireExecutor(
             name = "executor",
             { testAsync.sendEvent("executor start") },
@@ -97,12 +89,10 @@ class AsynchronousDelegatingAsyncTransformerTest {
         val publisher = SubmissionPublisher<EventWithException<String>>(executor, 10)
 
         // --- Test ---
-        val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
+        val listener = DelegatingAsyncChainListener<String, String, CommonListener<String>>(
             executor = executor,
             maxCapacity = 10,
             chained = chained,
-            stoppingExecutor = executor,
-            onSubscribeHandler = { testAsync.sendEvent("subscribed") },
             transform = { it, publish -> testAsync.sendEvent(it); publish(it) },
             handleErrors = null,
         )
@@ -147,10 +137,7 @@ class AsynchronousDelegatingAsyncTransformerTest {
     @Test
     fun `asynchronous graceful stop after submit`() {
         // --- Prepare ---
-        val chained = CommonListener<String>(
-            { testAsync.sendEvent("chained $it") },
-            { testAsync.sendEvent("chained subscribed") }
-        )
+        val chained = CommonListener<String> { testAsync.sendEvent("chained $it") }
         val listenerExecutor = acquireExecutor(
             name = "listener executor",
             { testAsync.sendEvent("listener executor start") },
@@ -170,12 +157,10 @@ class AsynchronousDelegatingAsyncTransformerTest {
 
         // --- Test ---
         // Start listener.
-        val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
+        val listener = DelegatingAsyncChainListener<String, String, CommonListener<String>>(
             executor = listenerExecutor,
             maxCapacity = 10,
             chained = chained,
-            stoppingExecutor = stoppingExecutor,
-            onSubscribeHandler = { testAsync.sendEvent("subscribed") },
             transform = { it, publish -> testAsync.sendEvent(it); publish(it) },
             handleErrors = null,
         )
@@ -246,9 +231,7 @@ class AsynchronousDelegatingAsyncTransformerTest {
     @Test
     fun `asynchronous graceful stop after submit with long event processing`() {
         // --- Prepare ---
-        val chained = CommonListener<String>(
-            { testAsync.sendEvent("chained $it") }
-        )
+        val chained = CommonListener<String> { testAsync.sendEvent("chained $it") }
         val listenerExecutor = acquireExecutor(
             name = "listener executor",
             { testAsync.sendEvent("listener executor start") },
@@ -268,11 +251,10 @@ class AsynchronousDelegatingAsyncTransformerTest {
 
         // --- Test ---
         // Start listener.
-        val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
+        val listener = DelegatingAsyncChainListener<String, String, CommonListener<String>>(
             executor = listenerExecutor,
             maxCapacity = 10,
             chained = chained,
-            stoppingExecutor = stoppingExecutor,
             transform = { it, publish -> testAsync.sendEvent(it); Thread.sleep(defaultTestAsyncAssertTimeoutMs * 2); publish(it) },
             handleErrors = null,
         )
@@ -339,7 +321,7 @@ class AsynchronousDelegatingAsyncTransformerTest {
     @Test
     fun `asynchronous double stop`() {
         // --- Prepare ---
-        val chained = CommonListener<String>({ testAsync.sendEvent("chained $it") })
+        val chained = CommonListener<String> { testAsync.sendEvent("chained $it") }
         val innerExecutor = acquireExecutor(
             beforeStart = { testAsync.sendEvent("executor start") },
             afterCompletion = { testAsync.sendEvent("executor finished") }
@@ -348,22 +330,20 @@ class AsynchronousDelegatingAsyncTransformerTest {
 
         // --- Test ---
         // Start listener.
-        val listener = DelegatingAsyncTransformer<String, String, CommonListener<String>>(
+        val listener = DelegatingAsyncChainListener<String, String, CommonListener<String>>(
             executor = innerExecutor,
             maxCapacity = 10,
             chained = chained,
-            stoppingExecutor = innerExecutor,
-            onSubscribeHandler = { testAsync.sendEvent("subscribed") },
             transform = { it, publish -> testAsync.sendEvent(it); publish(it) },
             handleErrors = null
         )
         publisher.subscribe(listener)
 
         val firstStopHandle = AtomicReference<CompletableFuture<*>>()
-        thread { firstStopHandle.set(listener.stop()) }.join()
+        thread { firstStopHandle.set(listener.stop().toCompletableFuture()) }.join()
 
         val secondStopHandle = AtomicReference<CompletableFuture<*>>()
-        thread { secondStopHandle.set(listener.stop()) }.join()
+        thread { secondStopHandle.set(listener.stop().toCompletableFuture()) }.join()
 
         // Stop handles must be exactly the same.
         Assertions.assertNotNull(firstStopHandle.get())
