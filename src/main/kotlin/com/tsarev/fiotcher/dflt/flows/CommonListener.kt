@@ -24,6 +24,7 @@ open class CommonListener<ResourceT : Any>(
     private var subscription: Flow.Subscription? = null
 
     override fun onSubscribe(subscription: Flow.Subscription?) {
+        if (stopBrake.isPushed) return
         subscription ?: throw IllegalArgumentException("subscription must not be null")
         this.subscription = subscription
         subscription.request(Long.MAX_VALUE)

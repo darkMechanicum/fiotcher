@@ -39,6 +39,7 @@ class DelegatingAsyncChainListener<FromT : Any, ToT : Any, ListenerT>(
     }
 
     override fun onSubscribe(subscription: Flow.Subscription?) {
+        if (stopBrake.isPushed) return
         subscription ?: throw IllegalArgumentException("subscription must not be null")
         this.subscription = subscription
         subscription.request(Long.MAX_VALUE)

@@ -21,10 +21,9 @@ class CommonListenerTest {
         // --- Prepare ---
         val listener = CommonListener<String> { testSync.sendEvent(it) }
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
+        publisher.subscribe(listener)
 
         // --- Test ---
-        publisher.subscribe(listener)
-        testSync.assertEvent("subscribed")
         publisher.submit("one".asSuccess())
         testSync.assertEvent("one")
         publisher.submit("two".asSuccess())
@@ -37,10 +36,9 @@ class CommonListenerTest {
         // --- Prepare ---
         val listener = CommonListener<String> { testSync.sendEvent(it) }
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
+        publisher.subscribe(listener)
 
         // --- Test ---
-        publisher.subscribe(listener)
-        testSync.assertEvent("subscribed")
         publisher.submit("one".asSuccess())
         listener.stop()
         publisher.submit("two".asSuccess())
@@ -53,10 +51,9 @@ class CommonListenerTest {
         // --- Prepare ---
         val listener = CommonListener<String> { testSync.sendEvent(it) }
         val publisher = SubmissionPublisher<EventWithException<String>>(callerThreadTestExecutor, 100)
+        publisher.subscribe(listener)
 
         // --- Test ---
-        publisher.subscribe(listener)
-        testSync.assertEvent("subscribed")
         listener.stop()
         publisher.submit("one".asSuccess())
         publisher.submit("two".asSuccess())
@@ -75,9 +72,7 @@ class CommonListenerTest {
         // --- Test ---
         listener.stop()
         publisher.subscribe(listener)
-        testSync.assertEvent<PoolIsStopped> {
-            Assertions.assertEquals("Cannot subscribe because tracker pool is stopped", it.message)
-        }
+        publisher.submit("one".asSuccess())
         testSync.assertNoEvent()
     }
 

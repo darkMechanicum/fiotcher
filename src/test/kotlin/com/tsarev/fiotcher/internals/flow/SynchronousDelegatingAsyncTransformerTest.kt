@@ -31,9 +31,7 @@ class SynchronousDelegatingAsyncTransformerTest {
             transform = { it, publish -> testSync.sendEvent(it); publish(it) },
             handleErrors = null
         )
-        testSync.assertEvent("chained subscribed")
         publisher.subscribe(listener)
-        testSync.assertEvent("subscribed")
         publisher.submit("one".asSuccess())
         testSync.assertEvent("one")
         testSync.assertEvent("chained one")
@@ -57,9 +55,7 @@ class SynchronousDelegatingAsyncTransformerTest {
             transform = { it, publish -> testSync.sendEvent(it); publish(it) },
             handleErrors = null
         )
-        testSync.assertEvent("chained subscribed")
         publisher.subscribe(listener)
-        testSync.assertEvent("subscribed")
         publisher.submit("one".asSuccess())
         testSync.assertEvent("one")
         testSync.assertEvent("chained one")
@@ -82,9 +78,7 @@ class SynchronousDelegatingAsyncTransformerTest {
             transform = { it, publish -> testSync.sendEvent(it); publish(it) },
             handleErrors = null
         )
-        testSync.assertEvent("chained subscribed")
         publisher.subscribe(listener)
-        testSync.assertEvent("subscribed")
         listener.stop(true)
         publisher.submit("one".asSuccess())
         publisher.submit("two".asSuccess())
@@ -107,9 +101,8 @@ class SynchronousDelegatingAsyncTransformerTest {
         )
         listener.stop()
         publisher.subscribe(listener)
-        testSync.assertEvent<PoolIsStopped> {
-            Assertions.assertEquals("Cannot subscribe because tracker pool is stopped", it.message)
-        }
+        publisher.submit("one".asSuccess())
+        testSync.assertNoEvent()
     }
 
 }
