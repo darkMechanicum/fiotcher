@@ -2,7 +2,10 @@ package com.tsarev.fiotcher.internals.pool
 
 import com.tsarev.fiotcher.api.InitialEventsBunch
 import com.tsarev.fiotcher.api.TrackerAlreadyRegistered
-import com.tsarev.fiotcher.dflt.*
+import com.tsarev.fiotcher.dflt.Brake
+import com.tsarev.fiotcher.dflt.DefaultPublisherPool
+import com.tsarev.fiotcher.dflt.DefaultTrackerPool
+import com.tsarev.fiotcher.dflt.push
 import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.pool.Tracker
 import com.tsarev.fiotcher.util.*
@@ -35,6 +38,7 @@ class DefaultTrackerPoolTest {
             override val stopBrake = Brake<Unit>()
             override fun doStop(force: Boolean, exception: Throwable?): CompletionStage<*> =
                 stopBrake.push { testSync.sendEvent("tracker stopped"); complete(Unit) }
+
             override fun doInit(
                 executor: Executor,
                 sendEvent: (EventWithException<InitialEventsBunch<String>>) -> Unit
@@ -69,6 +73,7 @@ class DefaultTrackerPoolTest {
             override val stopBrake = Brake<Unit>()
             override fun doStop(force: Boolean, exception: Throwable?): CompletionStage<*> =
                 stopBrake.push { testSync.sendEvent("tracker stopped"); complete(Unit) }
+
             override fun doInit(
                 executor: Executor,
                 sendEvent: (EventWithException<InitialEventsBunch<String>>) -> Unit
@@ -97,6 +102,7 @@ class DefaultTrackerPoolTest {
             override val stopBrake = Brake<Unit>()
             override fun doStop(force: Boolean, exception: Throwable?): CompletionStage<*> =
                 stopBrake.push { testSync.sendEvent("tracker stopped"); complete(Unit) }
+
             override fun doInit(
                 executor: Executor,
                 sendEvent: (EventWithException<InitialEventsBunch<String>>) -> Unit
@@ -133,6 +139,7 @@ class DefaultTrackerPoolTest {
             override val stopBrake = Brake<Unit>()
             override fun doStop(force: Boolean, exception: Throwable?): CompletionStage<*> =
                 stopBrake.push { thread(start = true) { testAsync.sendEvent("tracker stopped") }; complete(Unit) }
+
             override fun doInit(
                 executor: Executor,
                 sendEvent: (EventWithException<InitialEventsBunch<String>>) -> Unit
@@ -192,6 +199,7 @@ class DefaultTrackerPoolTest {
             override val stopBrake = Brake<Unit>()
             override fun doStop(force: Boolean, exception: Throwable?): CompletionStage<*> =
                 stopBrake.push { testSync.sendEvent("tracker stopped"); complete(Unit) }
+
             override fun doInit(
                 executor: Executor,
                 sendEvent: (EventWithException<InitialEventsBunch<String>>) -> Unit
@@ -234,6 +242,7 @@ class DefaultTrackerPoolTest {
             override val stopBrake = Brake<Unit>()
             override fun doStop(force: Boolean, exception: Throwable?): CompletionStage<*> =
                 stopBrake.push { thread(start = true) { testAsync.sendEvent("tracker stopped") }; complete(Unit) }
+
             override fun doInit(
                 executor: Executor,
                 sendEvent: (EventWithException<InitialEventsBunch<String>>) -> Unit

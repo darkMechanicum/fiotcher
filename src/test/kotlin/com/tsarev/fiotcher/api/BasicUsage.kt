@@ -4,7 +4,6 @@ import com.tsarev.fiotcher.dflt.DefaultFileProcessorManager
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import org.junit.jupiter.params.ParameterizedTest
 import java.io.File
 
 class BasicUsage {

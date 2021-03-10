@@ -18,7 +18,4 @@ class TrackerAlreadyRegistered(resource: Any, key: String) :
 /**
  * Exception to signal, that the pool is stopping and can't register anything.
  */
-class PoolIsStopped : FiotcherException {
-    constructor() : super("Tracker pool is stopped and can't register anything")
-    constructor(message: String) : super("$message because tracker pool is stopped")
-}
+class PoolIsStopped : FiotcherException("Tracker pool is stopped and can't register anything")

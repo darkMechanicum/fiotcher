@@ -1,7 +1,6 @@
 package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.*
-import com.tsarev.fiotcher.dflt.flows.CommonListener
 import com.tsarev.fiotcher.internal.*
 import com.tsarev.fiotcher.internal.flow.ChainingListener
 import com.tsarev.fiotcher.internal.pool.ListenerPool
@@ -33,7 +32,7 @@ class DefaultListenerPool<InitialT : Any>(
     ): ChainingListener<InitialT> {
         // Sync on the pool to handle stopping properly.
         synchronized(this) {
-            validateIsStopping { PoolIsStopped() }
+            if (stopBrake.isPushed) return listener
             registeredListeners.computeIfAbsent(key) { Collections.synchronizedSet(HashSet()) } += listener
             publisherPool.getPublisher(key).subscribe(listener)
         }
@@ -42,7 +41,8 @@ class DefaultListenerPool<InitialT : Any>(
 
 
     override fun deRegisterListener(key: String, force: Boolean): CompletionStage<*> {
-        validateIsStopping { PoolIsStopped() }
+        // Return stopping brake if requested to deregister something during stopping.
+        if (stopBrake.isPushed) return this.doStop()
         // Check if we need to de register anything.
         val deRegistered = registeredListeners[key]
         return if (deRegistered != null) doDeRegisterListeners(
@@ -113,10 +113,5 @@ class DefaultListenerPool<InitialT : Any>(
                 else CompletableFuture.completedFuture(Unit)
         }
     }
-
-    /**
-     * Throw exception if pool is stopping.
-     */
-    private fun validateIsStopping(toThrow: () -> Throwable) = if (isStopped) throw toThrow() else Unit
 
 }

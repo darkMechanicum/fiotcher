@@ -222,7 +222,11 @@ class AsynchronousDelegatingAsyncChainListenerTest {
             executor = listenerExecutor,
             maxCapacity = 10,
             chained = chained,
-            transform = { it, publish -> testAsync.sendEvent(it); Thread.sleep(defaultTestAsyncAssertTimeoutMs * 2); publish(it) },
+            transform = { it, publish ->
+                testAsync.sendEvent(it); Thread.sleep(defaultTestAsyncAssertTimeoutMs * 2); publish(
+                it
+            )
+            },
             handleErrors = null,
         )
 

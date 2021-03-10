@@ -61,7 +61,8 @@ class FileSystemTrackerTest {
     @Test
     fun `test two files altering with debounce`() {
         // --- Prepare ---
-        val tracker = FileSystemTracker(debounceTimeoutMs = fileSystemPause * 2, trackCreations = true, trackChanges = true)
+        val tracker =
+            FileSystemTracker(debounceTimeoutMs = fileSystemPause * 2, trackCreations = true, trackChanges = true)
         tracker.init(tempDir, callerThreadTestExecutor) {
             testAsync.sendEvent("files changed")
             it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }

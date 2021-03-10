@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id "org.jetbrains.kotlin.jvm" version "1.4.21"
-//    id 'jacoco'
+    id 'jacoco'
 }
 
 group 'com.tsarev'
@@ -14,9 +14,9 @@ repositories {
 }
 
 // Snapshot jacoco to support 15 java.
-//jacoco {
-//    toolVersion = '0.8.7-SNAPSHOT'
-//}
+jacoco {
+    toolVersion = '0.8.7-SNAPSHOT'
+}
 
 // Additional example source set.
 sourceSets {
@@ -43,15 +43,15 @@ test {
             excludeTags("non-windows")
         }
     }
-//    finalizedBy jacocoTestReport
+    finalizedBy jacocoTestReport
 }
 
-//jacocoTestReport {
-//    dependsOn test
-//    reports {
-//        html.destination file("${buildDir}/jacocoHtml")
-//    }
-//}
+jacocoTestReport {
+    dependsOn test
+    reports {
+        html.destination file("${buildDir}/jacocoHtml")
+    }
+}
 
 task runExample(type: JavaExec) {
     classpath = sourceSets.example.runtimeClasspath

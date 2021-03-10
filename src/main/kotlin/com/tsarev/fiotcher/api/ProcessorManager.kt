@@ -18,7 +18,6 @@ interface ProcessorManager<InitialEventT : Any> {
      * @param resource resource to stop tracking
      * @param key type of this tracked path, to bind to handlers
      * @param force if set to `false` then attempt to process all discovered elements and then stop
-     * @throws PoolIsStopped if underlying tracker pool is stopping
      * @return a future handle, that will complete when stopping completes.
      */
     fun stopTracking(resource: InitialEventT, key: String, force: Boolean = false): CompletionStage<*>

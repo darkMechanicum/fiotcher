@@ -16,9 +16,9 @@ interface FileProcessorManager : ProcessorManager<File> {
      * @param recursively whether to track specified directory recursively
      * @throws IllegalArgumentException when passed path is not a directory
      * @throws TrackerAlreadyRegistered if tracker is already registered on same [path] with the same [key]
-     * @throws PoolIsStopped if underlying tracker pool is stopping
      * @return a future handle, that will return [Stoppable] - a handle to registered tracker, when registration completes.
-     * Invoking that [Stoppable] is equivalent of [stopTracking] with same parameters as passed to [startTrackingFile]
+     * Invoking that [Stoppable] is equivalent of [stopTracking] with same parameters as passed to [startTrackingFile].
+     * If pool is stopped, then future will be completed exceptionally with [PoolIsStopped] exception.
      */
     fun startTrackingFile(path: File, key: String, recursively: Boolean = true): CompletionStage<out Stoppable>
 

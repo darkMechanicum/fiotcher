@@ -21,8 +21,8 @@ interface TrackerPool<WatchT : Any> {
      * @param key type, with which tracker was registered
      * @param tracker tracker to register
      * @throws TrackerAlreadyRegistered if tacker is already registered within [resourceBundle] and [key]
-     * @throws PoolIsStopped when the pool is stopping
      * @return a asynchronous handle to tracker shutdown hook
+     * If pool is stopped, then handle will be completed exceptionally with [PoolIsStopped] exception.
      */
     fun startTracker(
         resourceBundle: WatchT,
@@ -39,7 +39,6 @@ interface TrackerPool<WatchT : Any> {
      * @param resourceBundle bundle, for which tracker was registered
      * @param key type, with which tracker was registered
      * @param force try to force tracker resource shutdown, thus ignoring pending resource events
-     * @throws PoolIsStopped when the pool is stopping
      * @return a asynchronous handle to tracker stopping process
      */
     fun stopTracker(
