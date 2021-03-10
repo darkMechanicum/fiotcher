@@ -4,7 +4,10 @@ import com.tsarev.fiotcher.api.Stoppable
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.ExecutionException
 
-interface StoppableBrakeMixin<T> : DoStopMixin<T>, Stoppable {
+/**
+ * Mixin to implement [Stoppable] with [Brake].
+ */
+interface StoppableBrakeMixin<T> : DoStop<T>, Stoppable {
 
     override fun stop(force: Boolean) = doStop(force)
 
@@ -27,7 +30,11 @@ interface StoppableBrakeMixin<T> : DoStopMixin<T>, Stoppable {
         }
 }
 
-interface DoStopMixin<T> {
+/**
+ * Interface to handle stopping with [Brake]. Divided from [StoppableBrakeMixin]
+ * for correct delegation.
+ */
+interface DoStop<T> {
 
     val stopBrake: Brake<T>
 

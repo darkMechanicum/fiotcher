@@ -147,7 +147,7 @@ class DefaultTrackerPool<WatchT : Any>(
         key: String,
         tracker: Tracker<WatchT>
     ): Tracker<WatchT> {
-        return object : Tracker<WatchT>(), DoStopMixin<Unit> by tracker {
+        return object : Tracker<WatchT>(), DoStop<Unit> by tracker {
             // Also deregister tracker when stop is requested.
             override fun doStop(force: Boolean, exception: Throwable?): CompletionStage<Unit> =
                 doStopTracker(resourceBundle, key, false, tracker)

@@ -2,7 +2,7 @@ package com.tsarev.fiotcher.dflt
 
 import com.tsarev.fiotcher.api.*
 import com.tsarev.fiotcher.internal.*
-import com.tsarev.fiotcher.internal.flow.ChainingListener
+import com.tsarev.fiotcher.internal.ChainingListener
 import com.tsarev.fiotcher.internal.pool.ListenerPool
 import com.tsarev.fiotcher.internal.pool.PublisherPool
 import java.util.*

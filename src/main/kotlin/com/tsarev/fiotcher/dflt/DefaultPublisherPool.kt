@@ -5,6 +5,9 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executor
 import java.util.concurrent.SubmissionPublisher
 
+/**
+ * Simple [SubmissionPublisher] grouping class.
+ */
 class DefaultPublisherPool<EventT : Any>(
     private val executor: Executor,
     private val maxCapacity: Int

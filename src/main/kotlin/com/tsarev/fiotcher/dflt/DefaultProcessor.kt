@@ -10,7 +10,7 @@ import java.util.concurrent.*
 
 /**
  * Default processor implementation, using
- * [DefaultWayStation] and [DefaultTrackerPool].
+ * [DefaultListenerPool] and [DefaultTrackerPool].
  */
 class DefaultProcessor<WatchT : Any> private constructor(
     /**

@@ -4,7 +4,7 @@ import com.tsarev.fiotcher.api.FiotcherException
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.*
 import com.tsarev.fiotcher.internal.EventWithException
-import com.tsarev.fiotcher.internal.flow.ChainingListener
+import com.tsarev.fiotcher.internal.ChainingListener
 import java.util.concurrent.*
 
 /**

@@ -1,7 +1,6 @@
-package com.tsarev.fiotcher.internal.flow
+package com.tsarev.fiotcher.internal
 
 import com.tsarev.fiotcher.api.Stoppable
-import com.tsarev.fiotcher.internal.EventWithException
 import java.util.concurrent.Executor
 import java.util.concurrent.Flow
 

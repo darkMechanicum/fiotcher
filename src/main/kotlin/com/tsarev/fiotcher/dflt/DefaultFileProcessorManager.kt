@@ -7,13 +7,17 @@ import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.flows.CommonListener
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
 import com.tsarev.fiotcher.internal.Processor
-import com.tsarev.fiotcher.internal.flow.ChainingListener
+import com.tsarev.fiotcher.internal.ChainingListener
 import java.io.File
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 
+/**
+ * Default implementation of [FileProcessorManager] delegating to [ProcessorManager]
+ * and handling [ProcessorManager.ListenerBuilder].
+ */
 class DefaultFileProcessorManager(
     /**
      * Executor service, used for processing.
