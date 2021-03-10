@@ -12,6 +12,7 @@ import java.io.File
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 class DefaultFileProcessorManager(
     /**
@@ -22,7 +23,7 @@ class DefaultFileProcessorManager(
     private val processor: Processor<File> = DefaultProcessor(executorService)
 ) : FileProcessorManager, Stoppable by processor {
 
-    override fun startTrackingFile(path: File, key: String, recursively: Boolean): CompletionStage<out Stoppable> {
+    override fun startTrackingFile(path: File, key: String, recursively: Boolean): Future<out Stoppable> {
         val fileSystemTracker = FileSystemTracker(recursive = recursively)
         return processor.startTracker(path, fileSystemTracker, key)
     }

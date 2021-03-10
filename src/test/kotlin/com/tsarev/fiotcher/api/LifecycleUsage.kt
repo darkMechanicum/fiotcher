@@ -20,8 +20,7 @@ class LifecycleUsage {
         val key = "key"
 
         // Start tracking file.
-        manager.startTrackingFile(tempDir, key, false)
-            .toCompletableFuture().get()
+        manager.startTrackingFile(tempDir, key, false).get()
 
         // Create simple listener.
         manager.listenForKey(key)
@@ -52,8 +51,7 @@ class LifecycleUsage {
         val key = "key"
 
         // Start tracking file.
-        manager.startTrackingFile(tempDir, key, false)
-            .toCompletableFuture().get()
+        manager.startTrackingFile(tempDir, key, false).get()
 
         // Create simple listener.
         manager.listenForKey(key)

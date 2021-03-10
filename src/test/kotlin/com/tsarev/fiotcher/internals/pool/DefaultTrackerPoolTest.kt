@@ -13,6 +13,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletionStage
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executor
 import kotlin.concurrent.thread
 
@@ -83,8 +84,11 @@ class DefaultTrackerPoolTest {
         // --- Test ---
         // Check that tracker can't be registered twice.
         pool.startTracker("some", testTracker, "key")
-        Assertions.assertThrows(TrackerAlreadyRegistered::class.java) {
-            pool.startTracker("some", testTracker, "key")
+        try {
+            pool.startTracker("some", testTracker, "key").get()
+            Assertions.fail()
+        } catch (cause: ExecutionException) {
+            Assertions.assertTrue(cause.cause is TrackerAlreadyRegistered)
         }
     }
 
@@ -116,7 +120,7 @@ class DefaultTrackerPoolTest {
         testSync.assertEvent("tracker started")
 
         // Check that tracker stop is successful.
-        handle.thenAccept { it.stop() }
+        handle.get().stop()
         testSync.assertEvent("tracker stopped")
 
         // Check that tracker can be started again.
@@ -263,11 +267,18 @@ class DefaultTrackerPoolTest {
         // Aggregation subscription is interrupted, so no event will be passed to cancel it.
         trackerExecutor.activate {
             // Test that inner tracker registration was interrupted.
-            testAsync.assertEvent("tracker stopped")
+            testAsync.assertEvents(
+                "tracker finished" to false,
+                "tracker stopped" to true
+            )
         }
 
         // Check that all there are no other events.
         activateAll {
+            // Allow to finish registration handle.
+            testAsync.assertEvents(
+                "tracker finished" to false,
+            )
             testAsync.assertNoEvent()
         }
     }

@@ -19,8 +19,7 @@ class BasicUsage {
         val manager = DefaultFileProcessorManager()
         val key = "key"
         // Start tracking file.
-        manager.startTrackingFile(tempDir, key, false)
-            .toCompletableFuture().get()
+        manager.startTrackingFile(tempDir, key, false).get()
 
         // Create simple listener.
         manager.listenForKey(key)
@@ -48,8 +47,7 @@ class BasicUsage {
         val manager = DefaultFileProcessorManager()
         val key = "key"
         // Start tracking file.
-        manager.startTrackingFile(tempDir, key, false)
-            .toCompletableFuture().get()
+        manager.startTrackingFile(tempDir, key, false).get()
 
         // Create simple listener.
         // Send xml tag local name as event (when parser detects closing tag).
@@ -91,8 +89,7 @@ class BasicUsage {
         val manager = DefaultFileProcessorManager()
         val key = "key"
         // Start tracking file.
-        manager.startTrackingFile(tempDir, key, true)
-            .toCompletableFuture().get()
+        manager.startTrackingFile(tempDir, key, true).get()
 
         // Create simple listener.
         // Send xml tag local name as event (when parser detects closing tag).

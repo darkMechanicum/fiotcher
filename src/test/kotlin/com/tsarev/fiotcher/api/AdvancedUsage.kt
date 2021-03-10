@@ -23,10 +23,8 @@ class AdvancedUsage {
         val secondTempDir = tempDir.createDirectory("second")
 
         // Start tracking files.
-        val firstTrackerHandle = manager.startTrackingFile(firstTempDir, key, false)
-            .toCompletableFuture().get()
-        manager.startTrackingFile(secondTempDir, key, false)
-            .toCompletableFuture().get()
+        val firstTrackerHandle = manager.startTrackingFile(firstTempDir, key, false).get()
+        manager.startTrackingFile(secondTempDir, key, false).get()
 
         // Create simple listener.
         manager.listenForKey(key)
@@ -68,8 +66,7 @@ class AdvancedUsage {
         val manager = DefaultFileProcessorManager()
         val key = "key"
         // Start tracking file.
-        manager.startTrackingFile(tempDir, key, false)
-            .toCompletableFuture().get()
+        manager.startTrackingFile(tempDir, key, false).get()
 
         // Create listener.
         val listenerHandle = manager.listenForKey(key)

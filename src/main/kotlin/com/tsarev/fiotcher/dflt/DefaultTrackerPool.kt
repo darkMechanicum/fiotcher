@@ -6,7 +6,6 @@ import com.tsarev.fiotcher.internal.pool.PublisherPool
 import com.tsarev.fiotcher.internal.pool.Tracker
 import com.tsarev.fiotcher.internal.pool.TrackerPool
 import java.util.concurrent.*
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Default tracker pool implementation, which also serves as
@@ -38,18 +37,9 @@ class DefaultTrackerPool<WatchT : Any>(
     }
 
     /**
-     * Utility class to hold tracker related info.
-     */
-    internal data class TrackerInfo<WatchT : Any>(
-        val tracker: Tracker<WatchT>,
-        val submissionFuture: CompletableFuture<Tracker<WatchT>>,
-        val trackerTaskHandle: Future<*>?
-    )
-
-    /**
      * Registerer trackers, by resource and key.
      */
-    private val registeredTrackers = ConcurrentHashMap<Pair<WatchT, String>, TrackerInfo<WatchT>>()
+    private val registeredTrackers = ConcurrentHashMap<Pair<WatchT, String>, Tracker<WatchT>>()
 
     /**
      * Stopping brake.
@@ -60,25 +50,23 @@ class DefaultTrackerPool<WatchT : Any>(
         resourceBundle: WatchT,
         tracker: Tracker<WatchT>,
         key: String
-    ): CompletableFuture<Tracker<WatchT>> {
+    ): Future<Tracker<WatchT>> {
         val trackerKey = resourceBundle to key
-        val resultFuture = CompletableFuture<Tracker<WatchT>>()
-        val trackerInfo = TrackerInfo(tracker, resultFuture, null)
 
         // Sync on the pool to handle stopping properly.
         synchronized(this) {
             // Stop with exception if pool is stopped.
             if (stopBrake.isPushed) return CompletableFuture.failedFuture(PoolIsStopped())
             // Try to register tracker.
-            if (registeredTrackers.putIfAbsent(trackerKey, trackerInfo) != null)
-                throw TrackerAlreadyRegistered(resourceBundle, key)
+            if (registeredTrackers.putIfAbsent(trackerKey, tracker) != null)
+                return CompletableFuture.failedFuture(TrackerAlreadyRegistered(resourceBundle, key))
         }
 
         // We shall call submit here, since tracker [init] method is potentially time consuming.
         // It can, for example, include recursive directory scanning, or remote repository initial fetching.
-        val submissionHandle = executorService.submit {
+        return executorService.submit<Tracker<WatchT>> {
             // Stop silently if pool is stopped. Tracker will be stopped by [stop] method, since it is in the map already.
-            if (this@DefaultTrackerPool.isStopped) return@submit
+            if (this@DefaultTrackerPool.isStopped) throw PoolIsStopped()
 
             val wrappedTracker: Tracker<WatchT>?
             val currentThread = Thread.currentThread()
@@ -90,61 +78,48 @@ class DefaultTrackerPool<WatchT : Any>(
 
                 // Start tracker. From now he is treated like started.
                 if (!currentThread.isInterrupted) {
-                    val handle = executorService.submit(tracker)
+                    executorService.submit(tracker)
                     wrappedTracker = createTrackerWrapper(resourceBundle, key, tracker)
-                    val newTracker = registeredTrackers.computeIfPresent(trackerKey) { _, old ->
-                        // Check if we are replacing ourselves.
-                        if (tracker === old.tracker) trackerInfo.copy(trackerTaskHandle = handle) else old
+                    // If submission handle had interrupted us, so stop tracker.
+                    if (currentThread.isInterrupted) {
+                        doStopTracker(resourceBundle, key, true, tracker)
+                        return@submit mockTracker
+                    } else {
+                        return@submit wrappedTracker
                     }
-
-                    // If some other tracker accidentally was in the map, so cancel tracker work.
-                    if (newTracker?.tracker !== tracker) handle.cancel(true)
-                    resultFuture.complete(wrappedTracker)
-                }
-
-                // If submission handle had interrupted us, so stop tracker.
-                if (currentThread.isInterrupted) {
+                } else {
                     doStopTracker(resourceBundle, key, true, tracker)
+                    return@submit mockTracker
                 }
             } catch (interrupt: InterruptedException) {
                 // Force shutdown if initialization was interrupted.
-                try {
-                    doStopTracker(resourceBundle, key, true, tracker)
-                } finally {
-                    currentThread.interrupt()
-                }
+                doStopTracker(resourceBundle, key, true, tracker)
+                throw interrupt
             } catch (cause: Throwable) {
                 try {
                     // Force shutdown if initialization threw an exception.
                     doStopTracker(resourceBundle, key, true, tracker)
                 } finally {
-                    resultFuture.completeExceptionally(cause)
                     throw cause
                 }
+                // Exception for compiler.
+                @Suppress("UNREACHABLE_CODE", "ThrowableNotThrown")
+                throw FiotcherException("Must not got here")
             }
         }
-
-        // If someone cancels result future, then he must also cancel registration future as well.
-        resultFuture.exceptionally { cause ->
-            if (cause is CancellationException) {
-                // No need to check, whether we are running, since two interrupts cannot hurt more.
-                submissionHandle.cancel(true)
-                mockTracker
-            } else {
-                throw cause
-            }
-        }
-
-        return resultFuture
     }
 
     override fun stopTracker(resourceBundle: WatchT, key: String, force: Boolean): CompletableFuture<*> {
         // Return stopping brake if requested to deregister something during stopping.
-        if (stopBrake.isPushed) return doStop()
         val trackerKey = resourceBundle to key
-        val foundTracker = registeredTrackers[trackerKey]?.tracker
+        val foundTracker = registeredTrackers[trackerKey]
         return if (foundTracker != null) {
-            doStopTracker(resourceBundle, key, force, foundTracker)
+            doStopTracker(
+                resourceBundle,
+                key,
+                force,
+                foundTracker
+            )
         } else {
             CompletableFuture.completedFuture(Unit)
         }
@@ -152,14 +127,14 @@ class DefaultTrackerPool<WatchT : Any>(
 
     override fun doStop(force: Boolean, exception: Throwable?) = stopBrake.push {
         val trackersCopy = HashMap(registeredTrackers)
+        registeredTrackers.clear()
         val allTrackersStopFuture = trackersCopy
-            .map { (key, value) -> doStopTracker(key.first, key.second, force, value.tracker) }
+            .map { (key, _) -> stopTracker(key.first, key.second, force) }
             .reduce { first, second -> first.thenAcceptBoth(second) { _, _ -> }.thenApply { } }
 
         // Combine all futures in one and clear resources after their completion.
         // Order matters here.
         allTrackersStopFuture.thenAccept {
-            registeredTrackers.clear()
             if (exception != null) completeExceptionally(exception) else complete(Unit)
         }
     }
@@ -200,48 +175,15 @@ class DefaultTrackerPool<WatchT : Any>(
         force: Boolean,
         tracker: Tracker<WatchT>
     ): CompletableFuture<Unit> {
-        val trackerKey = resourceBundle to key
-        val foundInfo = registeredTrackers[trackerKey]
-        // Ensure first, that we are stopping the right tracker.
-        return if (foundInfo != null && foundInfo.tracker === tracker) {
-            // Add handler to stop tracker and remove it from registered.
-            val submissionHandle = foundInfo.submissionFuture
-            // Separate future as workaround of no `thenCompose` on abnormal completion.
-            val resultHandle = CompletableFuture<Unit>()
-            submissionHandle.whenComplete { _, _ ->
-                try {
-                    // Additional flag to distinguish between no registered tracker and other registered.
-                    val wasPresent = AtomicBoolean(false)
-                    // Remove only that tracker, that we are stopping.
-                    val present = registeredTrackers.computeIfPresent(trackerKey) { _, old ->
-                        if (tracker === old.tracker) {
-                            wasPresent.set(true); null
-                        } else old
-                    }
-                    if (wasPresent.get() && present == null) { // Only stop once, on first removal.
-                        if (force) foundInfo.trackerTaskHandle?.cancel(force)
-                        tracker.stop(force).thenAccept { resultHandle.complete(Unit) }
-                    } else resultHandle.complete(Unit)
-                } catch (cause: Throwable) {
-                    resultHandle.completeExceptionally(cause)
-                }
+        val resultHandle = CompletableFuture<Unit>()
+        tracker.stop(force).whenComplete { _, exception ->
+            registeredTrackers.computeIfPresent(resourceBundle to key) { _, old ->
+                // In case of close [stopTracker] and [startTracker] calls.
+                if (old == tracker) null else old
             }
-            // Cancel the handle in case it is not finished yet, if we are forcing.
-            if (force) {
-                submissionHandle.cancel(true)
-            }
-            resultHandle
-        } else {
-            CompletableFuture.completedFuture(Unit)
+            if (exception != null) resultHandle.completeExceptionally(exception)
+            else resultHandle.complete(Unit)
         }
-    }
-
-    /**
-     * Throw exception if pool is stopping.
-     */
-    private fun validateIsStopping(toThrow: () -> Throwable) {
-        if (isStopped) {
-            throw toThrow()
-        }
+        return resultHandle
     }
 }

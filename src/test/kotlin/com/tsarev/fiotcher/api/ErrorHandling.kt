@@ -22,8 +22,7 @@ class ErrorHandling {
         val manager = DefaultFileProcessorManager()
         val key = "key"
         // Start tracking file.
-        manager.startTrackingFile(tempDir, key, false)
-            .toCompletableFuture().get()
+        manager.startTrackingFile(tempDir, key, false).get()
 
         // Create listener.
         manager.listenForKey(key)
@@ -56,8 +55,7 @@ class ErrorHandling {
         val manager = DefaultFileProcessorManager()
         val key = "key"
         // Start tracking file.
-        manager.startTrackingFile(tempDir, key, false)
-            .toCompletableFuture().get()
+        manager.startTrackingFile(tempDir, key, false).get()
 
         // Special test only exceptions.
         class StopException : RuntimeException()
