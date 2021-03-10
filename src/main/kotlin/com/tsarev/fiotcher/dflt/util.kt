@@ -20,6 +20,11 @@ typealias Brake<T> = AtomicReference<BrakeInner<T>>
 val <T> Brake<T>.isPushed get() = this.get() != null
 
 /**
+ * Check, if this brake was once pushed.
+ */
+val <T> Brake<T>.isForced get() = this.get()?.forcibly ?: false
+
+/**
  * Push the brake once with [CompletableFuture], if it was not pushed.
  */
 inline fun <T> Brake<T>.push(

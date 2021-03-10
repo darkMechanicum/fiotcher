@@ -2,6 +2,7 @@ package com.tsarev.fiotcher.dflt.trackers
 
 import com.tsarev.fiotcher.api.InitialEventsBunch
 import com.tsarev.fiotcher.dflt.Brake
+import com.tsarev.fiotcher.dflt.isForced
 import com.tsarev.fiotcher.dflt.isWindows
 import com.tsarev.fiotcher.dflt.push
 import com.tsarev.fiotcher.internal.EventWithException
@@ -11,7 +12,6 @@ import java.io.File
 import java.nio.file.*
 import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Tracker, that monitors file changes on local file system.
@@ -66,12 +66,6 @@ class FileSystemTracker(
     override val stopBrake = Brake<Unit>()
 
     /**
-     * If this tracker is being stopped forcibly.
-     */
-    @Volatile
-    private var forced = AtomicBoolean(false)
-
-    /**
      * Used to watch file system.
      */
     private val watchedPathFileSystem = FileSystems.getDefault()
@@ -82,11 +76,6 @@ class FileSystemTracker(
     private val watchService = watchedPathFileSystem.newWatchService()
 
     /**
-     * Already discovered files with their timestamp.
-     */
-    private var discoveredDirectories: MutableSet<Path> = HashSet()
-
-    /**
      * Registered watch keys.
      */
     private var registeredWatches: MutableMap<Path, WatchKey> = HashMap()
@@ -95,8 +84,6 @@ class FileSystemTracker(
      * Send event closure.
      */
     private lateinit var sendEvent: (EventWithException<InitialEventsBunch<File>>) -> Unit
-
-    override val isStopped get() = stopBrake.get() != null
 
     /**
      * Initialize existing directories.
@@ -127,12 +114,12 @@ class FileSystemTracker(
                         allEntries.addNewEntries(processDirectoryEvent(key))
                         val currentTimeMillis = System.currentTimeMillis()
                         val endTime = currentTimeMillis + debounceTimeoutMs
-                        while (debounceEnabled && !forced.get()) {
+                        while (debounceEnabled && !stopBrake.isForced) {
                             try {
                                 // Reset previous key recklessly - finally at the bottom will do the job at failure.
                                 key?.reset()
                                 key = watchService.poll(debounceTimeoutMs, TimeUnit.MILLISECONDS)
-                                if (forced.get() || endTime < System.currentTimeMillis()) break
+                                if (stopBrake.isForced || endTime < System.currentTimeMillis()) break
                                 if (key == null) break
                                 allEntries.addNewEntries(processDirectoryEvent(key))
                             } catch (interrupted: InterruptedException) {
@@ -279,13 +266,9 @@ class FileSystemTracker(
         return currentEventBunch.map { InnerEvent(it.second, it.first.toAbsolutePath().toFile()) }
     }
 
-    override fun doStop(force: Boolean, exception: Throwable?) = this
-        .forced.set(force)
-        .let {
-            stopBrake.push {
-                if (exception != null) completeExceptionally(exception)
-            }
-        }
+    override fun doStop(force: Boolean, exception: Throwable?) = stopBrake.push(force) {
+        if (exception != null) completeExceptionally(exception)
+    }
 
     /**
      * Create brake synchronously.

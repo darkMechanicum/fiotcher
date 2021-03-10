@@ -55,9 +55,9 @@ class DefaultListenerPool<InitialT : Any>(
         val allListenersStopFuture =
             if (listenersCopy.isEmpty()) CompletableFuture.completedFuture(Unit)
             else listenersCopy
-                .map { doDeRegisterListeners(it.key, force, it.value) }
+                .map { doDeRegisterListeners(it.key, force, it.value.toSet()) }
                 .reduce { first, second -> first.thenAcceptBoth(second) { _, _ -> } }
-        allListenersStopFuture.thenAccept {
+        allListenersStopFuture.whenComplete { _, _ ->
             registeredListeners.clear()
             complete(Unit)
         }

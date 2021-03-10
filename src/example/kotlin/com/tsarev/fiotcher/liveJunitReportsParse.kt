@@ -9,6 +9,7 @@ import java.io.PrintStream
 import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
+import kotlin.system.exitProcess
 
 val dummyPrintStream = PrintStream(object : OutputStream() {
     override fun write(b: Int) = Unit
@@ -20,14 +21,16 @@ val dummyPrintStream = PrintStream(object : OutputStream() {
 fun main() {
 
     // Get parameters.
-    val tmpReportsDir = Files.createTempDirectory("com_tsarev_fiotcher_example").toFile()
-    println("Using temporary directory: ${tmpReportsDir.absolutePath}.\n")
+    val firstTmpReportsDir = Files.createTempDirectory("com_tsarev_fiotcher_example").toFile()
+    val secondTmpReportsDir = Files.createTempDirectory("com_tsarev_fiotcher_example").toFile()
+    println("Using temporary directory [${firstTmpReportsDir.absolutePath}] and [${secondTmpReportsDir.absolutePath}].\n")
 
     // Create processor manager.
     val manager = DefaultFileProcessorManager()
 
     // Start tracking junit report directory.
-    manager.startTrackingFile(tmpReportsDir, "junit").get()
+    manager.startTrackingFile(firstTmpReportsDir, "junit").get()
+    manager.startTrackingFile(secondTmpReportsDir, "junit").get()
 
     val testCount = AtomicLong()
 
@@ -44,12 +47,16 @@ fun main() {
     }
 
     // Start junit instance.
-    startJUnit(tmpReportsDir, "com.tsarev.fiotcher").join()
+    startJUnit(firstTmpReportsDir, "com.tsarev.fiotcher.api").join()
+    startJUnit(secondTmpReportsDir, "com.tsarev.fiotcher.internals").join()
 
     // Stop processor manager.
     manager.stopAndWait(false)
 
     println("\n${testCount.get()} test discovered.")
+
+    // Exit in case some running threads remain.
+    exitProcess(0)
 }
 
 /**
@@ -65,6 +72,6 @@ private fun startJUnit(tmpReportsDir: File, packageName: String) = thread(start 
             "-p", packageName
         )
     } catch (cause: Throwable) {
-        cause.printStackTrace()
+        // no-op
     }
 }

@@ -119,7 +119,7 @@ object TestExecutorRegistry {
                 } catch (ignored: InterruptedException) {
                     Thread.currentThread().interrupt()
                 } catch (ignored: Throwable) {
-                    ignored.printStackTrace()
+                    // no-op
                 }
             }
         }

@@ -9,7 +9,7 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 
-class ErrorHandling {
+class ErrorHandlingTest {
 
     @TempDir
     lateinit var tempDir: File
@@ -46,7 +46,8 @@ class ErrorHandling {
             Assertions.assertTrue(it.message?.contains(file.absolutePath) ?: false)
         }
 
-        println()
+        // Tear down.
+        manager.stop(false).toCompletableFuture().get()
     }
 
     @Test
@@ -99,6 +100,9 @@ class ErrorHandling {
         // Check that no more events are sent.
         tempDir.createFile("stop.txt") { "first" }
         testAsync.assertNoEvent()
+
+        // Tear down.
+        manager.stop(false).toCompletableFuture().get()
     }
 
 }

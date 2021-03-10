@@ -127,14 +127,19 @@ class DefaultTrackerPool<WatchT : Any>(
 
     override fun doStop(force: Boolean, exception: Throwable?) = stopBrake.push {
         val trackersCopy = HashMap(registeredTrackers)
-        val allTrackersStopFuture = trackersCopy
-            .map { (key, _) -> stopTracker(key.first, key.second, force) }
-            .reduce { first, second -> first.thenAcceptBoth(second) { _, _ -> }.thenApply { } }
+        val allTrackersStopFuture = if (trackersCopy.isNotEmpty()) {
+            trackersCopy
+                .map { (key, _) -> stopTracker(key.first, key.second, force) }
+                .reduce { first, second -> first.thenAcceptBoth(second) { _, _ -> }.thenApply { } }
+        } else CompletableFuture.completedFuture(Unit)
 
         // Combine all futures in one and clear resources after their completion.
         // Order matters here.
         allTrackersStopFuture.thenAccept {
-            if (exception != null) completeExceptionally(exception) else complete(Unit)
+            if (exception != null)
+                completeExceptionally(exception)
+            else
+                complete(Unit)
             registeredTrackers.clear()
         }
     }

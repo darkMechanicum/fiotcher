@@ -6,10 +6,10 @@ A small resource scanning and handling processor library.
 
 # Examples
 Usage examples can be found at:
-1. Basic usage - `/test/kotlin/com/tsarev/fiotcher/api/BasicUsage.kt`
-2. Advanced usage - `/test/kotlin/com/tsarev/fiotcher/api/BasicUsage.kt`
-3. Error handling usage - `/test/kotlin/com/tsarev/fiotcher/api/BasicUsage.kt`
-4. Lifecycle control usage - `/test/kotlin/com/tsarev/fiotcher/api/BasicUsage.kt`
+1. Basic usage - `/test/kotlin/com/tsarev/fiotcher/api/BasicUsageTest.kt`
+2. Advanced usage - `/test/kotlin/com/tsarev/fiotcher/api/AdvancedUsageTest.kt`
+3. Error handling usage - `/test/kotlin/com/tsarev/fiotcher/api/ErrorHandlingTest.kt`
+4. Lifecycle control usage - `/test/kotlin/com/tsarev/fiotcher/api/LifecycleUsageTest.kt`
 
 Also, there is self parse test results example in module `example` 
 (`/src/example/kotlin/com/tsarev/fiotcher/liveJunitReportsParse.kt`).

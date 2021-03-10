@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
-class LifecycleUsage {
+class LifecycleUsageTest {
 
     @TempDir
     lateinit var tempDir: File
@@ -42,6 +42,9 @@ class LifecycleUsage {
 
         // Assert no processing events occurred.
         testAsync.assertNoEvent()
+
+        // Tear down.
+        manager.stop(false).toCompletableFuture().get()
     }
 
     @Test
@@ -80,6 +83,9 @@ class LifecycleUsage {
 
         // Assert no events are available.
         testAsync.assertNoEvent()
+
+        // Tear down.
+        manager.stop(false).toCompletableFuture().get()
     }
 
 }

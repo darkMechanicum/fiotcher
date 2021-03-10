@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
-class AdvancedUsage {
+class AdvancedUsageTest {
 
     @TempDir
     lateinit var tempDir: File
@@ -58,6 +58,9 @@ class AdvancedUsage {
 
         // Check that no events are passed.
         testAsync.assertNoEvent()
+
+        // Tear down.
+        manager.stop(false).toCompletableFuture().get()
     }
 
     @Test
@@ -108,6 +111,9 @@ class AdvancedUsage {
 
         // Check that no event was passed.
         testAsync.assertNoEvent()
+
+        // Tear down.
+        manager.stop(false).toCompletableFuture().get()
     }
 
 }

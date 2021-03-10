@@ -6,7 +6,8 @@ import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.Processor
 import com.tsarev.fiotcher.internal.pool.ListenerPool
 import com.tsarev.fiotcher.internal.pool.TrackerPool
-import java.util.concurrent.*
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 /**
  * Default processor implementation, using
@@ -52,14 +53,14 @@ class DefaultProcessor<WatchT : Any> private constructor(
             complete(Unit)
         } else {
             // Order is important to guarantee graceful stopping.
-            trackerPool.stop(false)
-                .thenCompose { listenerPool.stop(false).thenAccept { } }
-                .thenAccept {
+            trackerPool.stop(false).whenComplete { _, _ ->
+                listenerPool.stop(false).whenComplete { _, _ ->
                     publisherPool.clear()
                     // Stopping executor must be shot down lastly.
                     executorService.shutdown()
                     complete(Unit)
                 }
+            }
         }
     }
 

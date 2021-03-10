@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
-class BasicUsage {
+class BasicUsageTest {
 
     @TempDir
     lateinit var tempDir: File
@@ -39,6 +39,9 @@ class BasicUsage {
 
         // Check that event was passed.
         testAsync.assertEvent("newFile2.txt")
+
+        // Tear down.
+        manager.stop(false).toCompletableFuture().get()
     }
 
     @Test
@@ -81,6 +84,9 @@ class BasicUsage {
 
         // Check that no more events are left.
         testAsync.assertNoEvent()
+
+        // Tear down.
+        manager.stop(false).toCompletableFuture().get()
     }
 
     @Test
@@ -128,6 +134,9 @@ class BasicUsage {
 
         // Check that no more events are left.
         testAsync.assertNoEvent()
+
+        // Tear down.
+        manager.stop(false).toCompletableFuture().get()
     }
 
     @Test
@@ -170,6 +179,9 @@ class BasicUsage {
 
         // Check that no more events are left.
         testAsync.assertNoEvent()
+
+        // Tear down.
+        manager.stop(false).toCompletableFuture().get()
     }
 
 
