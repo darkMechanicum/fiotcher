@@ -42,7 +42,7 @@ class DefaultFileProcessorManager(
         private val registerListener: (ChainingListener<InitialEventsBunch<InitialT>>) -> Stoppable
     ) : ProcessorManager.ListenerBuilder<EventT> {
 
-        override fun <NextT : Any> delegateAsync(
+        override fun <NextT : Any> asyncTransform(
             handleErrors: ((Throwable) -> Throwable?)?,
             transformer: (EventT, (NextT) -> Unit) -> Unit
         ) = ListenerBuilderIntermediate<InitialT, NextT, EventT>(

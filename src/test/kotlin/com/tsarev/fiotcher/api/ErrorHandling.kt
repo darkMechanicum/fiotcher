@@ -65,7 +65,7 @@ class ErrorHandling {
 
         // Create listener.
         manager.listenForKey(key)
-            .delegateAsync<File>(
+            .asyncTransform<File>(
                 // Break the chain if [StopException] occurred.
                 handleErrors = { if (it is StopException) throw it else it }
             ) { it, publish ->

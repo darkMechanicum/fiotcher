@@ -9,7 +9,6 @@ import com.tsarev.fiotcher.internal.asSuccess
 import com.tsarev.fiotcher.internal.pool.Tracker
 import java.io.File
 import java.nio.file.*
-import java.time.Instant
 import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -85,7 +84,7 @@ class FileSystemTracker(
     /**
      * Already discovered files with their timestamp.
      */
-    private var discovered: MutableMap<Path, Pair<Instant, Boolean>> = HashMap()
+    private var discoveredDirectories: MutableSet<Path> = HashSet()
 
     /**
      * Registered watch keys.
@@ -182,17 +181,13 @@ class FileSystemTracker(
             val changedCopy = it.copy(type = EventType.CHANGED)
             when (it.type) {
                 EventType.CHANGED -> if (!this.contains(deletedCopy)) this += it
-                EventType.CREATED -> if (this.contains(deletedCopy)) {
+                EventType.CREATED -> {
                     this -= deletedCopy
                     this += createdCopy
-                } else {
-                    this += createdCopy
                 }
-                EventType.DELETED -> if (this.contains(createdCopy) || this.contains(changedCopy)) {
+                EventType.DELETED -> {
                     this -= createdCopy
                     this -= changedCopy
-                    this += deletedCopy
-                } else {
                     this += deletedCopy
                 }
             }
@@ -251,13 +246,11 @@ class FileSystemTracker(
                     // Also, if it is a directory - register it for watching.
                     val rawPath = event.typedContext(StandardWatchEventKinds.ENTRY_CREATE)
                     val path = basePath.resolve(rawPath)
-                    if (updatePath(path)) {
-                        val asFile = path.toFile()
-                        if (this.recursive && asFile.isDirectory) {
-                            registerRecursively(asFile)
-                        } else {
-                            currentEventBunch.add(path to EventType.CREATED)
-                        }
+                    val asFile = path.toFile()
+                    if (this.recursive && asFile.isDirectory) {
+                        registerRecursively(asFile)
+                    } else {
+                        currentEventBunch.add(path to EventType.CREATED)
                     }
                 }
                 StandardWatchEventKinds.ENTRY_MODIFY -> {
@@ -265,11 +258,9 @@ class FileSystemTracker(
                     // Also, collect it for event if it is not a directory.
                     val rawPath = event.typedContext(StandardWatchEventKinds.ENTRY_MODIFY)
                     val path = basePath.resolve(rawPath)
-                    if (updatePath(path)) also {
-                        if (!path.toFile().isDirectory) {
-                            // Watch only non directory entries.
-                            currentEventBunch.add(path to EventType.CHANGED)
-                        }
+                    if (!path.toFile().isDirectory) {
+                        // Watch only non directory entries.
+                        currentEventBunch.add(path to EventType.CHANGED)
                     }
                 }
                 StandardWatchEventKinds.ENTRY_DELETE -> {
@@ -277,34 +268,15 @@ class FileSystemTracker(
                     // Also, collect it for event if it is not a directory.
                     val rawPath = event.typedContext(StandardWatchEventKinds.ENTRY_DELETE)
                     val path = basePath.resolve(rawPath)
-                    val removed = discovered.remove(path)
-                    if (removed != null && !removed.second && !path.toFile().isDirectory) {
+                    val wasDirectory = registeredWatches[path]?.cancel()?.let { true } ?: false
+                    if (!wasDirectory) {
                         // Watch only non directory entries.
                         currentEventBunch.add(path to EventType.DELETED)
-                    } else if (removed != null) {
-                        registeredWatches[path]?.cancel()
                     }
                 }
             }
         }
         return currentEventBunch.map { InnerEvent(it.second, it.first.toAbsolutePath().toFile()) }
-    }
-
-    /**
-     * Update timestamp for path.
-     *
-     * @return `true` if update was meaningful
-     * (previous entry was not present or had older timestamp)
-     */
-    private fun updatePath(path: Path): Boolean {
-        val oldTimeStamp = discovered[path]?.first
-        val now = Instant.now()
-        return if (oldTimeStamp == null || now.isAfter(oldTimeStamp)) {
-            discovered[path] = Pair(now, path.toFile().isDirectory)
-            true
-        } else {
-            false
-        }
     }
 
     override fun doStop(force: Boolean, exception: Throwable?) = this
@@ -321,7 +293,6 @@ class FileSystemTracker(
     private fun doStopBrake() = stopBrake.push().apply {
         watchService.close()
         registeredWatches.clear()
-        discovered.clear()
         complete(Unit)
     }
 

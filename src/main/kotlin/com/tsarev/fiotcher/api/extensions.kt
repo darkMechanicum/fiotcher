@@ -19,7 +19,7 @@ import kotlin.collections.HashMap
  * For details see [ProcessorManager.listenForInitial]
  */
 fun FileProcessorManager.handleLines(key: String, linedListener: (String) -> Unit) = listenForKey(key)
-    .delegateAsync<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
+    .asyncTransform<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
     .startListening {
         val stream = getStreamOrNull(it)
         if (stream != null) {
@@ -33,7 +33,7 @@ fun FileProcessorManager.handleLines(key: String, linedListener: (String) -> Uni
  * For details see [ProcessorManager.listenForInitial]
  */
 fun FileProcessorManager.handleFiles(key: String, fileListener: (File) -> Unit) = listenForKey(key)
-    .delegateAsync<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
+    .asyncTransform<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
     .startListening { fileListener(it) }
 
 val defaultSaxParser = SAXParserFactory.newInstance().newSAXParser()!!
@@ -61,7 +61,7 @@ fun FileProcessorManager.handleSax(
     parsingErrorHandler: ((SAXException) -> Unit)? = null,
     saxListener: (SaxEvent) -> Unit
 ) = listenForKey(key)
-    .delegateAsync<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
+    .asyncTransform<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
     .startListening(
         handleErrors = {
             if (it is SAXException) parsingErrorHandler?.let { it1 -> it1(it) }
@@ -101,7 +101,7 @@ fun FileProcessorManager.handleDom(
     customDomParser: DocumentBuilder? = null,
     domListener: (Document) -> Unit
 ) = listenForKey(key)
-    .delegateAsync<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
+    .asyncTransform<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
     .startListening { val document = (customDomParser ?: defaultDomParser).parse(it); domListener(document) }
 
 /**

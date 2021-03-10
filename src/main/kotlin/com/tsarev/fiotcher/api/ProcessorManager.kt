@@ -51,7 +51,7 @@ interface ProcessorManager<InitialEventT : Any> {
          * @param handleErrors error handling function to process errors or to pass them down the chain.
          *        If exception is thrown inside the handler, than listener chain will stop.
          */
-        fun <NextT : Any> delegateAsync(
+        fun <NextT : Any> asyncTransform(
             handleErrors: ((Throwable) -> Throwable?)? = null,
             transformer: (EventT, (NextT) -> Unit) -> Unit,
         ): ListenerBuilder<NextT>
