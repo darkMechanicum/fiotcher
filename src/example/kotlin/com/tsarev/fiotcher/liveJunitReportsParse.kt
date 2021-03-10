@@ -27,7 +27,7 @@ fun main() {
     val manager = DefaultFileProcessorManager()
 
     // Start tracking junit report directory.
-    manager.startTrackingFile(tmpReportsDir, "junit").toCompletableFuture().get()
+    manager.startTrackingFile(tmpReportsDir, "junit").get()
 
     val testCount = AtomicLong()
 

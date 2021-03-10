@@ -2,6 +2,7 @@ package com.tsarev.fiotcher.internals.tracker
 
 import com.tsarev.fiotcher.dflt.trackers.NaiveFileTracker
 import com.tsarev.fiotcher.util.*
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -16,6 +17,11 @@ class NaiveFileTrackerTest {
     lateinit var tempDir: File
 
     private val testAsync = AsyncTestEvents()
+
+    @AfterEach
+    fun `clear test executors`() {
+        TestExecutorRegistry.clear()
+    }
 
     @Test
     fun `test two files altering`() {

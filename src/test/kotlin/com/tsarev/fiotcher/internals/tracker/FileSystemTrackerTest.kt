@@ -2,6 +2,7 @@ package com.tsarev.fiotcher.internals.tracker
 
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
 import com.tsarev.fiotcher.util.*
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -17,6 +18,11 @@ class FileSystemTrackerTest {
     lateinit var tempDir: File
 
     private val testAsync = AsyncTestEvents()
+
+    @AfterEach
+    fun `clear test executors`() {
+        TestExecutorRegistry.clear()
+    }
 
     // This test shouldn't be run on windows, since weird behaviour of [WatchService],
     // that can send change event twice. Only debounced tests make sense then.

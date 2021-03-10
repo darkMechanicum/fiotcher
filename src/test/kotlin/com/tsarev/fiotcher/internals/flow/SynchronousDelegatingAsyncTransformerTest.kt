@@ -5,6 +5,7 @@ import com.tsarev.fiotcher.dflt.flows.DelegatingAsyncChainListener
 import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.asSuccess
 import com.tsarev.fiotcher.util.*
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import java.util.concurrent.SubmissionPublisher
 
@@ -14,6 +15,11 @@ import java.util.concurrent.SubmissionPublisher
 class SynchronousDelegatingAsyncTransformerTest {
 
     private val testSync = SyncTestEvents()
+
+    @AfterEach
+    fun `clear test executors`() {
+        TestExecutorRegistry.clear()
+    }
 
     @Test
     fun `send two events`() {

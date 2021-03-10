@@ -39,6 +39,7 @@ object TestExecutorRegistry {
      */
     fun clear() {
         executors.forEach { it.interrupt() }
+        executors.forEach { it.close() }
         executors.forEach { it.suspended = true }
         executors.clear()
     }
@@ -116,7 +117,7 @@ object TestExecutorRegistry {
                         testThreadTasks.addFirst(runnable)
                     } else runnable.run()
                 } catch (ignored: InterruptedException) {
-                    // no-op
+                    Thread.currentThread().interrupt()
                 } catch (ignored: Throwable) {
                     ignored.printStackTrace()
                 }
