@@ -122,6 +122,24 @@ fun AsyncTestEvents.assertEvent(
 }
 
 /**
+ * Get event from the queue and assert it equality with specified [event].
+ *
+ * @param event event to compare with
+ * @param timeoutMs time allocated for receiving
+ */
+fun AsyncTestEvents.assertEventsUnordered(
+    vararg events: Any,
+    timeoutMs: Long = defaultTestAsyncAssertTimeoutMs,
+) {
+    val set = Collections.synchronizedSet(events.toMutableSet())
+    while (set.isNotEmpty()) {
+        val polled = poll(timeoutMs, TimeUnit.MILLISECONDS)
+        if (polled == null) Assertions.fail<Unit>("No events [$set] received")
+        Assertions.assertTrue(set.remove(polled)) { "Received not expected event [${polled}]" }
+    }
+}
+
+/**
  * Convenient alias.
  */
 internal infix fun String.required(isRequired: Boolean) = this to isRequired

@@ -130,4 +130,47 @@ class BasicUsage {
         testAsync.assertNoEvent()
     }
 
+    @Test
+    fun `parse single directory files with two listeners with defaults`() {
+        // --- Prepare ---
+        val manager = DefaultFileProcessorManager()
+        val key = "key"
+        // Start tracking file.
+        manager.startTrackingFile(tempDir, key, false).get()
+
+        // Create simple listener.
+        // Send xml tag local name as event (when parser detects closing tag).
+        manager.handleSax(key) { testAsync.sendEvent("+ ${it.element}") }
+        manager.handleSax(key) { testAsync.sendEvent("- ${it.element}") }
+
+        // --- Test ---
+        // Create first file.
+        tempDir.createFile("newFile.txt") {
+            """
+                <?xml version="1.0"?>
+                <first></first>
+            """.trimIndent()
+        }
+        // Check that first file has processed.
+        testAsync.assertEventsUnordered("+ first", "- first")
+
+        // Create second file.
+        tempDir.createFile("newFile2.txt") {
+            """
+                <?xml version="1.0"?>
+                <second>
+                <third>
+                </third>
+                </second>
+            """.trimIndent()
+        }
+
+        // Check that second file has processed.
+        testAsync.assertEventsUnordered("+ third", "- third", "+ second", "- second")
+
+        // Check that no more events are left.
+        testAsync.assertNoEvent()
+    }
+
+
 }
