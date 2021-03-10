@@ -23,11 +23,6 @@ abstract class Tracker<WatchT : Any> : Runnable, Stoppable, StoppableBrakeMixin<
     protected lateinit var resourceBundle: WatchT
 
     /**
-     * Brake to handle concurrent [init] calls.
-     */
-    private val initBrake = Brake<Unit>()
-
-    /**
      * Possible time consuming initial registration.
      *
      * @param resourceBundle path to tracked resource bundle
@@ -37,11 +32,8 @@ abstract class Tracker<WatchT : Any> : Runnable, Stoppable, StoppableBrakeMixin<
         executor: Executor,
         sendEvent: (EventWithException<InitialEventsBunch<WatchT>>) -> Unit
     ) {
-        initBrake.push {
-            this@Tracker.resourceBundle = resourceBundle
-            doInit(executor, sendEvent)
-            complete(Unit)
-        }.get()
+        this@Tracker.resourceBundle = resourceBundle
+        doInit(executor, sendEvent)
     }
 
     /**

@@ -25,7 +25,10 @@ class FileSystemTrackerTest {
     fun `test two files altering without debounce`() {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = 0, trackCreations = true, trackChanges = true)
-        tracker.init(tempDir, callerThreadTestExecutor) {}
+        tracker.init(tempDir, callerThreadTestExecutor) {
+            testAsync.sendEvent("files changed")
+            it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }
+        }
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
@@ -59,7 +62,10 @@ class FileSystemTrackerTest {
     fun `test two files altering with debounce`() {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = fileSystemPause * 2, trackCreations = true, trackChanges = true)
-        tracker.init(tempDir, callerThreadTestExecutor){}
+        tracker.init(tempDir, callerThreadTestExecutor) {
+            testAsync.sendEvent("files changed")
+            it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }
+        }
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
@@ -89,7 +95,10 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker =
             FileSystemTracker(debounceTimeoutMs = 0, recursive = true, trackCreations = true, trackChanges = true)
-        tracker.init(tempDir, callerThreadTestExecutor){}
+        tracker.init(tempDir, callerThreadTestExecutor) {
+            testAsync.sendEvent("files changed")
+            it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }
+        }
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
@@ -117,7 +126,10 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker =
             FileSystemTracker(debounceTimeoutMs = 400, recursive = true, trackCreations = true, trackChanges = true)
-        tracker.init(tempDir, callerThreadTestExecutor){}
+        tracker.init(tempDir, callerThreadTestExecutor) {
+            testAsync.sendEvent("files changed")
+            it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }
+        }
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
@@ -146,7 +158,10 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker =
             FileSystemTracker(debounceTimeoutMs = 400, recursive = true, trackCreations = true, trackChanges = true)
-        tracker.init(tempDir, callerThreadTestExecutor){}
+        tracker.init(tempDir, callerThreadTestExecutor) {
+            testAsync.sendEvent("files changed")
+            it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }
+        }
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }

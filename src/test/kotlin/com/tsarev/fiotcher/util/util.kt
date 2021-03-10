@@ -158,7 +158,7 @@ fun AsyncTestEvents.assertEvents(vararg events: Pair<Any, Boolean>, timeoutMs: L
     // If unprocessed is nit null, so there was chain of non required events and non of them matched.
     // So, we must fail.
     if (unprocessedPolled != null) {
-        Assertions.fail<Unit>("No event [$unprocessedPolled] match passed [${events.map { it.first }}]")
+        Assertions.fail<Unit>("Passed event [$unprocessedPolled] didn't match [${events.map { it.first }}]")
     }
 }
 

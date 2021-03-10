@@ -94,6 +94,7 @@ class DelegatingAsyncChainListener<FromT : Any, ToT : Any, ListenerT>(
             .thenCompose { loopForEventsCompletion(force) }
             .thenRun {
                 this@DelegatingAsyncChainListener.close()
+                this@DelegatingAsyncChainListener.subscription?.cancel()
                 if (exception != null) {
                     completeExceptionally(exception)
                     chained.doStop(force, exception)

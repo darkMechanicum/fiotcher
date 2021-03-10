@@ -24,7 +24,10 @@ class NaiveFileTrackerTest {
     fun `test two files altering`() {
         // --- Prepare ---
         val tracker = NaiveFileTracker(iterationMinMillis = 40)
-        tracker.init(tempDir, callerThreadTestExecutor) {}
+        tracker.init(tempDir, callerThreadTestExecutor) {
+            testAsync.sendEvent("files changed")
+            it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }
+        }
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
@@ -63,7 +66,10 @@ class NaiveFileTrackerTest {
     fun `test altering file in nested directory`() {
         // --- Prepare ---
         val tracker = NaiveFileTracker()
-        tracker.init(tempDir, callerThreadTestExecutor){}
+        tracker.init(tempDir, callerThreadTestExecutor) {
+            testAsync.sendEvent("files changed")
+            it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }
+        }
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
@@ -86,7 +92,10 @@ class NaiveFileTrackerTest {
     fun `test gracefully stop`() {
         // --- Prepare ---
         val tracker = NaiveFileTracker()
-        tracker.init(tempDir, callerThreadTestExecutor){}
+        tracker.init(tempDir, callerThreadTestExecutor) {
+            testAsync.sendEvent("files changed")
+            it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }
+        }
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
@@ -111,7 +120,10 @@ class NaiveFileTrackerTest {
     fun `test forcibly stop`() {
         // --- Prepare ---
         val tracker = NaiveFileTracker()
-        tracker.init(tempDir, callerThreadTestExecutor){}
+        tracker.init(tempDir, callerThreadTestExecutor) {
+            testAsync.sendEvent("files changed")
+            it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }
+        }
 
         // --- Test ---
         val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }

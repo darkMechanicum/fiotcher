@@ -2,11 +2,8 @@ package com.tsarev.fiotcher.internals.pool
 
 import com.tsarev.fiotcher.api.InitialEventsBunch
 import com.tsarev.fiotcher.api.TrackerAlreadyRegistered
-import com.tsarev.fiotcher.api.typedKey
 import com.tsarev.fiotcher.dflt.*
-import com.tsarev.fiotcher.dflt.flows.CommonListener
 import com.tsarev.fiotcher.internal.EventWithException
-import com.tsarev.fiotcher.internal.asSuccess
 import com.tsarev.fiotcher.internal.pool.Tracker
 import com.tsarev.fiotcher.util.*
 import org.junit.jupiter.api.AfterEach
@@ -14,7 +11,6 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.Executor
-import java.util.concurrent.Flow
 import kotlin.concurrent.thread
 
 class DefaultTrackerPoolTest {
@@ -124,68 +120,54 @@ class DefaultTrackerPoolTest {
     @Test
     fun `asynchronous register and listen tracker`() {
         // --- Prepare ---
-        val aggregatorExecutor = acquireExecutor("aggregate", testAsync::sendEvent)
+        val publisherExecutor = acquireExecutor("aggregate", testAsync::sendEvent)
         val trackerExecutor = acquireExecutor("tracker", testAsync::sendEvent)
         val defaultPublisherPool =
-            DefaultPublisherPool<EventWithException<InitialEventsBunch<String>>>(aggregatorExecutor, 256)
+            DefaultPublisherPool<EventWithException<InitialEventsBunch<String>>>(publisherExecutor, 256)
         val pool = DefaultTrackerPool(
             trackerExecutor,
             defaultPublisherPool
         )
         val testTracker = object : Tracker<String>() {
-            override fun run() = testSync.sendEvent("tracker started")
+            override fun run() = testAsync.sendEvent("tracker started")
             override val stopBrake = Brake<Unit>()
             override fun doStop(force: Boolean, exception: Throwable?): CompletionStage<*> =
-                stopBrake.push { testSync.sendEvent("tracker stopped"); complete(Unit) }
+                stopBrake.push { thread(start = true) { testAsync.sendEvent("tracker stopped") }; complete(Unit) }
             override fun doInit(
                 executor: Executor,
                 sendEvent: (EventWithException<InitialEventsBunch<String>>) -> Unit
-            ) = testSync.sendEvent("tracker initialized")
+            ) = testAsync.sendEvent("tracker initialized")
         }
         val key = "key"
-        val publisher = defaultPublisherPool.getPublisher(key)
 
         // --- Test ---
         // Check that tracker start is successful.
         pool.startTracker("some", testTracker, key)
         trackerExecutor.activate {
+            // Check that tracker is initialized.
             testAsync.assertEvent("tracker start")
-            testAsync.assertEvent("tracker finished")
             testAsync.assertEvent("tracker initialized")
-            testAsync.assertEvent("aggregator subscribed")
-            testAsync.assertEvent("registration finished")
-        }
+            testAsync.assertEvent("tracker finished")
 
-        // Check that tracker is launched.
-        trackerExecutor.activate {
+            // Check that tracker is launched.
             testAsync.assertEvent("tracker start")
             testAsync.assertEvent("tracker started")
             testAsync.assertEvent("tracker finished")
         }
 
-        // Check that events are passed.
-        publisher.submit(InitialEventsBunch("event").asSuccess())
-        aggregatorExecutor.activate {
-            testAsync.assertEvent("aggregate start")
-            testAsync.assertEvent("event")
-            testAsync.assertEvent("aggregate finished")
-        }
-
         // Check that tracker stop is successful.
-        pool.stopTracker("some", key)
+        pool.stopTracker("some", key).get()
         testAsync.assertEvent("tracker stopped")
 
         // Check that tracker can be started again.
         pool.startTracker("some", testTracker, key)
         trackerExecutor.activate {
-            testAsync.assertEvent("registration start")
+            // Check that tracker is initialized.
+            testAsync.assertEvent("tracker start")
             testAsync.assertEvent("tracker initialized")
-            testAsync.assertEvent("aggregator subscribed")
-            testAsync.assertEvent("registration finished")
-        }
+            testAsync.assertEvent("tracker finished")
 
-        // Check that tracker is launched.
-        trackerExecutor.activate {
+            // Check that tracker is launched.
             testAsync.assertEvent("tracker start")
             testAsync.assertEvent("tracker started")
             testAsync.assertEvent("tracker finished")
@@ -198,7 +180,6 @@ class DefaultTrackerPoolTest {
     fun `asynchronous early cancel tracker start`() {
         // --- Prepare ---
         val aggregatorExecutor = acquireExecutor("aggregate", testAsync::sendEvent)
-        val registrationExecutor = acquireExecutor("registration", testAsync::sendEvent)
         val trackerExecutor = acquireExecutor("tracker", testAsync::sendEvent)
         val defaultPublisherPool =
             DefaultPublisherPool<EventWithException<InitialEventsBunch<String>>>(aggregatorExecutor, 256)
@@ -225,14 +206,14 @@ class DefaultTrackerPoolTest {
         startHandle.cancel(true)
         Assertions.assertTrue(startHandle.isDone)
 
-        // Check that interrupt occurred.
-        registrationExecutor.activate {
-            testAsync.assertEvent("registration start")
-            testAsync.assertEvent("registration finished")
-        }
-
-        // Test that there are no more events.
         activateAll {
+            // Check that interrupt occurred.
+            testAsync.assertEvents(
+                "tracker start" to true,
+                "tracker finished" to true
+            )
+
+            // Test that there are no more events.
             testAsync.assertNoEvent()
         }
     }
@@ -240,47 +221,40 @@ class DefaultTrackerPoolTest {
     @Test
     fun `asynchronous middle cancel tracker start`() {
         // --- Prepare ---
-        val aggregatorExecutor = acquireExecutor("aggregate", testAsync::sendEvent)
-        val registrationExecutor = acquireExecutor("registration", testAsync::sendEvent)
+        val publisherExecutor = acquireExecutor("publisher", testAsync::sendEvent)
         val trackerExecutor = acquireExecutor("tracker", testAsync::sendEvent)
         val defaultPublisherPool =
-            DefaultPublisherPool<EventWithException<InitialEventsBunch<String>>>(aggregatorExecutor, 256)
+            DefaultPublisherPool<EventWithException<InitialEventsBunch<String>>>(publisherExecutor, 256)
         val pool = DefaultTrackerPool(
             trackerExecutor,
             defaultPublisherPool
         )
         val testTracker = object : Tracker<String>() {
-            override fun run() = testSync.sendEvent("tracker started")
+            override fun run() = testAsync.sendEvent("tracker started")
             override val stopBrake = Brake<Unit>()
             override fun doStop(force: Boolean, exception: Throwable?): CompletionStage<*> =
-                stopBrake.push { testSync.sendEvent("tracker stopped"); complete(Unit) }
+                stopBrake.push { thread(start = true) { testAsync.sendEvent("tracker stopped") }; complete(Unit) }
             override fun doInit(
                 executor: Executor,
                 sendEvent: (EventWithException<InitialEventsBunch<String>>) -> Unit
-            ) = testSync.sendEvent("tracker initialized")
+            ) = testAsync.sendEvent("tracker initialized")
         }
         val key = "key"
 
         // --- Test ---
         // Check that tracker partial start is successful.
         val startHandle = pool.startTracker("some", testTracker, key)
-        registrationExecutor.activate {
-            testAsync.assertEvent("registration start")
-            // Increase registration executor activation time to pass "tracker initialized" event.
-            Thread.sleep(defaultTestAsyncAssertTimeoutMs / 2)
+        trackerExecutor.activate {
+            testAsync.assertEvent("tracker start")
         }
-        // Do not pass to subscription by syncing on event outside of executor active block.
-        testAsync.assertEvent("tracker initialized")
 
         // Cancel the handle.
         startHandle.cancel(true)
 
         // Aggregation subscription is interrupted, so no event will be passed to cancel it.
-        registrationExecutor.activate {
-            testAsync.assertEvents(
-                "aggregator subscribed" required false, // Subscription event can or cannot be in time.
-                "tracker stopped" required true // Stop event must occur.
-            )
+        trackerExecutor.activate {
+            // Test that inner tracker registration was interrupted.
+            testAsync.assertEvent("tracker stopped")
         }
 
         // Check that all there are no other events.

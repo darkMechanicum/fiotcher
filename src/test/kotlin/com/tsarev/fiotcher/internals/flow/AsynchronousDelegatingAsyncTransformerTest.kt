@@ -74,11 +74,7 @@ class AsynchronousDelegatingAsyncChainListenerTest {
     fun `asynchronous force stop after submit`() {
         // --- Prepare ---
         val chained = CommonListener<String> { testAsync.sendEvent("chained $it") }
-        val executor = acquireExecutor(
-            name = "executor",
-            { testAsync.sendEvent("executor start") },
-            { testAsync.sendEvent("executor finished") }
-        )
+        val executor = acquireExecutor("executor", testAsync::sendEvent, testAsync::sendEvent)
         val publisher = SubmissionPublisher<EventWithException<String>>(executor, 10)
 
         // --- Test ---
@@ -121,6 +117,12 @@ class AsynchronousDelegatingAsyncChainListenerTest {
             // On complete task.
             testAsync.assertEvent("executor start")
             testAsync.assertEvent("executor finished")
+
+            testAsync.assertEvents(
+                "executor start" to false,
+                "executor finished" to false
+            )
+
             testAsync.assertNoEvent()
         }
     }
@@ -196,7 +198,10 @@ class AsynchronousDelegatingAsyncChainListenerTest {
             // [listenerExecutor] block without separate execution submit).
             testAsync.assertEvents(
                 "listener executor start" to false,
-                "listener executor finished" to false
+                "listener executor finished" to false,
+                // Allow cancel processing by submission publisher.
+                "publisher executor start" to false,
+                "publisher executor finished" to false
             )
             testAsync.assertNoEvent()
         }
@@ -210,20 +215,9 @@ class AsynchronousDelegatingAsyncChainListenerTest {
     fun `asynchronous graceful stop after submit with long event processing`() {
         // --- Prepare ---
         val chained = CommonListener<String> { testAsync.sendEvent("chained $it") }
-        val listenerExecutor = acquireExecutor(
-            name = "listener executor",
-            { testAsync.sendEvent("listener executor start") },
-            { testAsync.sendEvent("listener executor finished") }
-        )
-        val publisherExecutor = acquireExecutor(
-            name = "publisher executor",
-            { testAsync.sendEvent("publisher executor start") },
-            { testAsync.sendEvent("publisher executor finished") }
-        )
+        val listenerExecutor = acquireExecutor("listener executor", testAsync::sendEvent, testAsync::sendEvent)
+        val publisherExecutor = acquireExecutor("publisher executor", testAsync::sendEvent, testAsync::sendEvent)
         val publisher = SubmissionPublisher<EventWithException<String>>(publisherExecutor, 10)
-
-        // --- Test ---
-        // Start listener.
         val listener = DelegatingAsyncChainListener<String, String, CommonListener<String>>(
             executor = listenerExecutor,
             maxCapacity = 10,
@@ -232,6 +226,7 @@ class AsynchronousDelegatingAsyncChainListenerTest {
             handleErrors = null,
         )
 
+        // --- Test ---
         // Test chained subscription.
         listenerExecutor.activate {
             testAsync.assertEvent("listener executor start")
@@ -271,16 +266,21 @@ class AsynchronousDelegatingAsyncChainListenerTest {
             testAsync.assertEvent("listener executor start")
             testAsync.assertEvent("chained one")
             testAsync.assertEvent("listener executor finished")
+
+            // First stopping async block.
+            testAsync.assertEvent("listener executor start")
+            testAsync.assertEvent("listener executor finished")
+
+            // Second stopping async block.
+            testAsync.assertEvent("listener executor start")
+            testAsync.assertEvent("listener executor finished")
         }
 
         activateAll {
-            // Skip listener inner publisher closing and second async stopping block
-            // (can be done in previous [listenerExecutor] block without separate execution submit).
             testAsync.assertEvents(
-                "listener executor start" to false,
-                "listener executor finished" to false,
-                "listener executor start" to false,
-                "listener executor finished" to false
+                // Allow publisher cancel request processing.
+                "publisher executor start" to false,
+                "publisher executor finished" to false,
             )
             testAsync.assertNoEvent()
         }

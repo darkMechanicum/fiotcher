@@ -37,7 +37,6 @@ class LifecycleUsage {
 
         // Create second file, but do not allow to process it.
         tempDir.createFile("newFile2.txt") { "content" }
-        Thread.sleep(fileSystemPause) // Small pause for tracker to catch changes.
 
         // forcibly stop with suspended processing.
         manager.stop(true).toCompletableFuture().get()
