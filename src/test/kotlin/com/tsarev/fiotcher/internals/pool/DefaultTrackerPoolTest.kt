@@ -255,9 +255,7 @@ class DefaultTrackerPoolTest {
             override fun doInit(
                 executor: Executor,
                 sendEvent: (EventWithException<InitialEventsBunch<String>>) -> Unit
-            ) = Thread.sleep(defaultTestAsyncAssertTimeoutMs / 2).also {
-                    testAsync.sendEvent("tracker initialized")
-                }
+            ) = testAsync.sendEvent("tracker initialized")
         }
         val key = "key"
 
@@ -266,6 +264,9 @@ class DefaultTrackerPoolTest {
         val startHandle = pool.startTracker("some", testTracker, key)
         trackerExecutor.activate {
             testAsync.assertEvent("tracker start")
+            // Small pause to give executor time to process event a bit, so
+            // cancelling will not result in discarding task from queue.
+            Thread.sleep(defaultTestAsyncAssertTimeoutMs / 2)
         }
 
         // Cancel the handle.
