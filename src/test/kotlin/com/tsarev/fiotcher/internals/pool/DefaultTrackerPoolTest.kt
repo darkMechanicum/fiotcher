@@ -245,12 +245,19 @@ class DefaultTrackerPoolTest {
             override fun run() = testAsync.sendEvent("tracker started")
             override val stopBrake = Brake<Unit>()
             override fun doStop(force: Boolean, exception: Throwable?): CompletionStage<*> =
-                stopBrake.push { thread(start = true) { testAsync.sendEvent("tracker stopped") }; complete(Unit) }
+                stopBrake.push {
+                    testAsync.sendEvent("tracker stopped", timeoutMs = 2000L)
+                    complete(Unit)
+                }
 
+            // Small pause to workaround case, when cancel occurs after registration
+            // task in TrackerPool has succeeded.
             override fun doInit(
                 executor: Executor,
                 sendEvent: (EventWithException<InitialEventsBunch<String>>) -> Unit
-            ) = testAsync.sendEvent("tracker initialized")
+            ) = Thread.sleep(defaultTestAsyncAssertTimeoutMs / 2).also {
+                    testAsync.sendEvent("tracker initialized")
+                }
         }
         val key = "key"
 
@@ -266,14 +273,12 @@ class DefaultTrackerPoolTest {
 
         // Aggregation subscription is interrupted, so no event will be passed to cancel it.
         trackerExecutor.activate {
-            // Test that inner tracker registration was interrupted.
             testAsync.assertEvents(
                 // Tracker can jump to initialization, but not further.
                 "tracker initialized" to false,
                 "tracker finished" to false,
                 // Tracker stop in essential.
-                "tracker stopped" to true
-            )
+                "tracker stopped" to true)
         }
 
         // Check that all there are no other events.

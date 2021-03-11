@@ -84,8 +84,16 @@ val defaultTestAsyncAssertTimeoutMs = if (isWindows) 2000L else 500L
  * @param timeoutMs time allocated for sending
  */
 fun AsyncTestEvents.sendEvent(event: Any, required: Boolean = true, timeoutMs: Long = defaultTestAsyncAssertTimeoutMs) {
-    if (!offer(event, timeoutMs, TimeUnit.MILLISECONDS) && required)
-        Assertions.fail<Unit>("Failed to send event [$event]")
+    try {
+        if (!offer(event, timeoutMs, TimeUnit.MILLISECONDS) && required)
+            Assertions.fail<Unit>("Failed to send event [$event]")
+    } catch (cause: InterruptedException) {
+        // Do not interrupt test messages sending.
+        if (!offer(event, timeoutMs, TimeUnit.MILLISECONDS) && required)
+            Assertions.fail<Unit>("Failed to send event [$event]")
+        // But honor it and resend.
+        throw cause
+    }
 }
 
 /**
