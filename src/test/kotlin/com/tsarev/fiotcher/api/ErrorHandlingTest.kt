@@ -102,7 +102,6 @@ class ErrorHandlingTest {
 
         // Check that listener is stopped and failure exception is saved.
         Assertions.assertTrue(listenerHandle.isStopped)
-        Assertions.assertTrue(listenerHandle.isStoppedExceptionally)
         Assertions.assertTrue(listenerHandle.stoppedException is FiotcherException)
         Assertions.assertTrue(listenerHandle.stoppedException?.cause is StopException)
 

@@ -15,18 +15,14 @@ interface StoppableBrakeMixin<T> : DoStop<T>, Stoppable {
 
     override val isStopped get() = stopBrake.get()?.stopFuture?.isDone ?: false
 
-    override val isStoppedExceptionally get() = stopBrake.get()?.stopFuture?.isCompletedExceptionally ?: false
-
     override val stoppedException: Throwable?
         get() {
-            return if (isStoppedExceptionally) {
-                try {
-                    stopBrake.get()?.stopFuture?.get()
-                    null
-                } catch (wrapped: ExecutionException) {
-                    wrapped.cause
-                }
-            } else null
+            return try {
+                stopBrake.get()?.stopFuture?.get()
+                null
+            } catch (wrapped: ExecutionException) {
+                wrapped.cause
+            }
         }
 }
 
