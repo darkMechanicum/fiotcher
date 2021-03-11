@@ -23,7 +23,7 @@ interface ProcessorManager<InitialEventT : Any> {
     fun stopTracking(resource: InitialEventT, key: String, force: Boolean = false): CompletionStage<*>
 
     /**
-     * Listen directly for tracker produced events.
+     * Listen for tracker produced events.
      *
      * @param key type of this tracked path, to bind to handlers
      */

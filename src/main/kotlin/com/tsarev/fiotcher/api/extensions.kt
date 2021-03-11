@@ -36,6 +36,9 @@ fun FileProcessorManager.handleFiles(key: String, fileListener: (File) -> Unit) 
     .asyncTransform<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
     .startListening { fileListener(it) }
 
+/**
+ * Simplified SAX event, got when element closing tag is encountered.
+ */
 data class SaxEvent(
     val element: String,
     val uri: String?,
@@ -64,12 +67,12 @@ fun FileProcessorManager.handleSax(
         .asyncTransform<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
         .startListening(
             handleErrors = {
-                if (it is SAXException) parsingErrorHandler?.let { it1 -> it1(it) }
+                if (it is SAXException) parsingErrorHandler?.let { handler -> handler(it) }
                     .let { null } else it
             }
-        ) {
+        ) { file ->
             val elements = HashMap<String, Deque<Map<String, String>>>()
-            (customSaxParser ?: defaultSaxParser).parse(it, object : DefaultHandler() {
+            (customSaxParser ?: defaultSaxParser).parse(file, object : DefaultHandler() {
                 override fun startElement(uri: String?, localName: String?, qName: String?, attributes: Attributes) =
                     if (qName != null) elements.computeIfAbsent(qName) { LinkedList() }.addFirst(attributes.toMap())
                         .let {} else Unit

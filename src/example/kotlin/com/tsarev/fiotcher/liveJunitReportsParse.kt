@@ -1,5 +1,7 @@
 package com.tsarev.fiotcher
 
+import com.tsarev.fiotcher.api.handleFiles
+import com.tsarev.fiotcher.api.handleLines
 import com.tsarev.fiotcher.api.handleSax
 import com.tsarev.fiotcher.dflt.DefaultFileProcessorManager
 import org.junit.platform.console.ConsoleLauncher
@@ -7,6 +9,7 @@ import java.io.File
 import java.io.OutputStream
 import java.io.PrintStream
 import java.nio.file.Files
+import java.util.concurrent.ConcurrentSkipListSet
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
@@ -32,12 +35,9 @@ fun main() {
     manager.startTrackingFile(firstTmpReportsDir, "junit").get()
     manager.startTrackingFile(secondTmpReportsDir, "junit").get()
 
-    val testCount = AtomicLong()
-
-    // Start parsing junit reports.
+    // Start printing junit testcases.
     manager.handleSax("junit") {
         if (it.element == "testcase") {
-            testCount.incrementAndGet()
             println(
                 "Test [${it.attributes["name"]?.removeSuffix("()")}]:\n" +
                         "\tFrom class [${it.attributes["classname"]}] " +
@@ -45,6 +45,22 @@ fun main() {
             )
         }
     }
+
+    // Start counting junit testcases.
+    val testCount = AtomicLong()
+    manager.handleSax("junit") {
+        if (it.element == "testcase") {
+            testCount.incrementAndGet()
+        }
+    }
+
+    // Start counting junit testcases.
+    val linesCount = AtomicLong()
+    manager.handleLines("junit") { linesCount.incrementAndGet() }
+
+    // Start registering report files.
+    val discoveredFiles = ConcurrentSkipListSet<String>()
+    manager.handleFiles("junit") { discoveredFiles += it.absolutePath}
 
     // Start junit instance.
     startJUnit(firstTmpReportsDir, "com.tsarev.fiotcher.api").join()
@@ -54,6 +70,9 @@ fun main() {
     manager.stopAndWait(false)
 
     println("\n${testCount.get()} test discovered.")
+    println("\n${linesCount.get()} lines discovered.")
+    println("Discovered reports:")
+    discoveredFiles.forEach { println("\t$it") }
 
     // Exit in case some running threads remain.
     exitProcess(0)

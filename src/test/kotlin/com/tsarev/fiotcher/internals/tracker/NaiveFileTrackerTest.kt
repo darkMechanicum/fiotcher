@@ -33,7 +33,13 @@ class NaiveFileTrackerTest {
         }
 
         // --- Test ---
-        val trackerThread = thread(start = true, isDaemon = true) { tracker.run() }
+        val trackerThread = thread(start = true, isDaemon = true) {
+            try {
+                tracker.run()
+            } catch (ignore: Throwable) {
+                // no-op
+            }
+        }
 
         // Test creation.
         val someFile = tempDir.createFile("someFile")
