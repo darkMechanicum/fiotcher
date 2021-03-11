@@ -18,6 +18,11 @@ val dummyPrintStream = PrintStream(object : OutputStream() {
     override fun write(b: Int) = Unit
 })
 
+// Stylish.
+const val ANSI_RESET = "\u001B[0m"
+const val ANSI_BLUE = "\u001B[34m"
+const val ANSI_WHITE = "\u001B[37m"
+
 /**
  * Launch this library tests and parse their reports with it.
  */
@@ -39,9 +44,9 @@ fun main() {
     manager.handleSax("junit") {
         if (it.element == "testcase") {
             println(
-                "Test [${it.attributes["name"]?.removeSuffix("()")}]:\n" +
-                        "\tFrom class [${it.attributes["classname"]}] " +
-                        "passed by [${it.attributes["time"]}] seconds."
+                "${ANSI_WHITE}Test [${ANSI_BLUE}${it.attributes["name"]?.removeSuffix("()")}${ANSI_WHITE}] " +
+                        "passed by [${ANSI_RESET}${it.attributes["time"]}${ANSI_WHITE}] seconds:\n" +
+                        "\tFrom class [${ANSI_RESET}${it.attributes["classname"]}${ANSI_WHITE}].${ANSI_RESET}\n"
             )
         }
     }
