@@ -268,7 +268,10 @@ class DefaultTrackerPoolTest {
         trackerExecutor.activate {
             // Test that inner tracker registration was interrupted.
             testAsync.assertEvents(
+                // Tracker can jump to initialization, but not further.
+                "tracker initialized" to false,
                 "tracker finished" to false,
+                // Tracker stop in essential.
                 "tracker stopped" to true
             )
         }
