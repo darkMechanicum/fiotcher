@@ -67,13 +67,7 @@ class DefaultTrackerPool<WatchT : Any>(
                 if (!currentThread.isInterrupted) {
                     executorService.submit(tracker)
                     wrappedTracker = createTrackerWrapper(resourceBundle, key, tracker)
-                    // If submission handle had interrupted us, so stop tracker.
-                    if (currentThread.isInterrupted) {
-                        doStopTracker(resourceBundle, key, true, tracker)
-                        throw InterruptedException("Interrupted after tracker was started")
-                    } else {
-                        return@submit wrappedTracker
-                    }
+                    return@submit wrappedTracker
                 } else {
                     doStopTracker(resourceBundle, key, true, tracker)
                     throw InterruptedException("Interrupted before tracker was started")

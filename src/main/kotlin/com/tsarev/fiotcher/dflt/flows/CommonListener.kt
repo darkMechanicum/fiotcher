@@ -2,8 +2,8 @@ package com.tsarev.fiotcher.dflt.flows
 
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.*
-import com.tsarev.fiotcher.internal.ChainingListener
 import com.tsarev.fiotcher.internal.EventWithException
+import com.tsarev.fiotcher.internal.ChainingListener
 import java.util.concurrent.Executor
 import java.util.concurrent.Flow
 
