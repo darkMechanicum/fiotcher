@@ -65,7 +65,7 @@ fun main() {
 
     // Start registering report files.
     val discoveredFiles = ConcurrentSkipListSet<String>()
-    manager.handleFiles("junit") { discoveredFiles += it.absolutePath}
+    manager.handleFiles("junit") { discoveredFiles += it.absolutePath }
 
     // Start junit instance.
     startJUnit(firstTmpReportsDir, "com.tsarev.fiotcher.api").join()

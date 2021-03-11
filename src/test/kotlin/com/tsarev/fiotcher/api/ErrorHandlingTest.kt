@@ -64,17 +64,17 @@ class ErrorHandlingTest {
 
         // Create listener.
         val listenerHandle = manager.listenForKey(key).asyncTransform<File>(
-                // Break the chain if [StopException] occurred.
-                handleErrors = { if (it is StopException) throw it else it }
-            ) { it, publish ->
-                for (file in it) {
-                    // Imitate unrecoverable error.
-                    if (file.name.contains("stop")) throw StopException()
-                    // Imitate recoverable error, that can be handled.
-                    if (file.name.contains("continue")) throw ContinueException()
-                    publish(file)
-                }
+            // Break the chain if [StopException] occurred.
+            handleErrors = { if (it is StopException) throw it else it }
+        ) { it, publish ->
+            for (file in it) {
+                // Imitate unrecoverable error.
+                if (file.name.contains("stop")) throw StopException()
+                // Imitate recoverable error, that can be handled.
+                if (file.name.contains("continue")) throw ContinueException()
+                publish(file)
             }
+        }
             .startListening(handleErrors = {
                 // Imitate recoverable error handling.
                 it.takeIf { it is ContinueException }?.let { testAsync.sendEvent("continue"); null }

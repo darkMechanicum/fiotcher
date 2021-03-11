@@ -101,7 +101,8 @@ fun <T : Any> tryTransform(
     } else throw common
 }
 
-fun <T> runAsync(executor: Executor, block: () -> T): CompletableFuture<T> = CompletableFuture.supplyAsync(block, executor)
+fun <T> runAsync(executor: Executor, block: () -> T): CompletableFuture<T> =
+    CompletableFuture.supplyAsync(block, executor)
 
 /**
  * Check if OS is windows.

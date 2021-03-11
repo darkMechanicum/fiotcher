@@ -6,8 +6,8 @@ import com.tsarev.fiotcher.api.ProcessorManager
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.flows.CommonListener
 import com.tsarev.fiotcher.dflt.trackers.FileSystemTracker
-import com.tsarev.fiotcher.internal.Processor
 import com.tsarev.fiotcher.internal.ChainingListener
+import com.tsarev.fiotcher.internal.Processor
 import java.io.File
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.ExecutorService

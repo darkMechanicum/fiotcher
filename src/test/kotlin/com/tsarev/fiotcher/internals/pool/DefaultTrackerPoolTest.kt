@@ -279,7 +279,8 @@ class DefaultTrackerPoolTest {
                 "tracker initialized" to false,
                 "tracker finished" to false,
                 // Tracker stop in essential.
-                "tracker stopped" to true)
+                "tracker stopped" to true
+            )
         }
 
         // Check that all there are no other events.

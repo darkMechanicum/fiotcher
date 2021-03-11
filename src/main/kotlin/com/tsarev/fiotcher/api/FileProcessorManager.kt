@@ -1,7 +1,6 @@
 package com.tsarev.fiotcher.api
 
 import java.io.File
-import java.util.concurrent.CompletionStage
 import java.util.concurrent.Future
 
 /**
