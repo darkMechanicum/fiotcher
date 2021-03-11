@@ -44,7 +44,7 @@ interface ProcessorManager<InitialEventT : Any> {
     interface ListenerBuilder<EventT : Any> {
 
         /**
-         * Create proxy listener, that will handle split events in new queue and with new executor.
+         * Create proxy listener, that will handle events asynchronously.
          *
          * @transformer a function that accepts [EventT] event and function to publish it further,
          * thus allowing to make a number of publishing on its desire.

@@ -1,6 +1,5 @@
 [![Build Status](https://travis-ci.com/darkMechanicum/fiotcher.svg?branch=master)](https://travis-ci.com/darkMechanicum/fiotcher)
 
-
 # Fiotcher
 A small resource scanning and handling processor library.
 
@@ -14,7 +13,7 @@ Usage examples can be found at:
 Also, there is self parse test results example in module `example` 
 (`/src/example/kotlin/com/tsarev/fiotcher/liveJunitReportsParse.kt`).
 
-*Note*: For IntelliJ users here are two saved run configurations, first 
+*Note*: For IntelliJ users there are two saved run configurations, first 
 to build, and second to launch self parse example.
 
 # About
@@ -42,17 +41,10 @@ They include:
 
 # Current limitations
 There are some limitations at the moment, that can be eliminated within current design:
-1. Graceful stop can lost some events, when using custom aggregators via `ProcessorManager#ListenerBuilder#doAggregate` method,
-   because aggregators and listeners are stopped simultaneously.
-   Aggregators and listener chain dependency management can fix it.
-2. There can be infinite event loop, when using custom aggregators via `ProcessorManager#ListenerBuilder#doAggregate` method.
-   Aggregators and listener chain dependency management can fix it.
-3. Current `FileSystemTracker` implementation is based upon Java API `WatchService`, so if nested directories
+1. Current `FileSystemTracker` implementation is based upon Java API `WatchService`, so if nested directories
    are created fast, so file can be lost. This can be fixed with fallback method, scanning with 
    plain BFS search at second thread and registering new directories in the watcher service.
-4. If an error occurs during listener processing, and it is not handled via error handler, so
-   it will be thrown and listener chain will stop. There is no way to detect this at the moment.
-   It can be fixed with changing `Stoppable` interface and adding more states rather than just `stopped`.
-5. At now Trackers are all single threaded. This can be fixed by hiding asynchronous processing in trackers themselves.
+2. At now Trackers are all single threaded. This can be fixed by hiding asynchronous processing in trackers themselves,
+   or launching them multiple times.
    
 _A treasure lies beneath this endless abyss of code history_
