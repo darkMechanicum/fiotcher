@@ -75,7 +75,7 @@ fun SyncTestEvents.assertNoEvent() {
  */
 typealias AsyncTestEvents = SynchronousQueue<Any>
 
-val defaultTestAsyncAssertTimeoutMs = if (isWindows) 2000L else 500L
+val defaultTestAsyncAssertTimeoutMs = if (isWindows) 2000L else 200L
 
 /**
  * Send event to the queue and await for the assertion on that event.

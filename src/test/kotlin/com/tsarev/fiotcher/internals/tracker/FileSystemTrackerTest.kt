@@ -32,7 +32,7 @@ class FileSystemTrackerTest {
         // --- Prepare ---
         val tracker = FileSystemTracker(debounceTimeoutMs = 0, trackCreations = true, trackChanges = true)
         tracker.init(tempDir, callerThreadTestExecutor) {
-            testAsync.sendEvent("files changed")
+            testAsync.sendEvent("files changed", timeoutMs = fileSystemPause * 2)
             it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }
         }
 
@@ -70,7 +70,7 @@ class FileSystemTrackerTest {
         val tracker =
             FileSystemTracker(debounceTimeoutMs = fileSystemPause * 2, trackCreations = true, trackChanges = true)
         tracker.init(tempDir, callerThreadTestExecutor) {
-            testAsync.sendEvent("files changed")
+            testAsync.sendEvent("files changed", timeoutMs = fileSystemPause * 2)
             it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }
         }
 
@@ -79,8 +79,8 @@ class FileSystemTrackerTest {
 
         // Test creation.
         val someFile = tempDir.createFile("someFile")
-        Thread.sleep(fileSystemPause) // Small pause to allow filesystem watcher to give away events.
         val someFile2 = tempDir.createFile("someFile2")
+        Thread.sleep(fileSystemPause) // Small pause to allow filesystem watcher to give away events.
         testAsync.assertEvent("files changed")
         testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
         testAsync.assertEvent("file ${someFile2.absolutePath} has been changed")
@@ -103,7 +103,7 @@ class FileSystemTrackerTest {
         val tracker =
             FileSystemTracker(debounceTimeoutMs = 0, recursive = true, trackCreations = true, trackChanges = true)
         tracker.init(tempDir, callerThreadTestExecutor) {
-            testAsync.sendEvent("files changed")
+            testAsync.sendEvent("files changed", timeoutMs = fileSystemPause * 2)
             it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }
         }
 
@@ -132,7 +132,7 @@ class FileSystemTrackerTest {
     fun `test gracefully stop with debounce`() {
         // --- Prepare ---
         val tracker =
-            FileSystemTracker(debounceTimeoutMs = 400, recursive = true, trackCreations = true, trackChanges = true)
+            FileSystemTracker(debounceTimeoutMs = fileSystemPause * 3, recursive = true, trackCreations = true, trackChanges = true)
         tracker.init(tempDir, callerThreadTestExecutor) {
             testAsync.sendEvent("files changed")
             it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }
@@ -143,12 +143,14 @@ class FileSystemTrackerTest {
 
         // Test creation.
         val someFile = tempDir.createFile("someFile")
-        Thread.sleep(100)
+        Thread.sleep(fileSystemPause)
         tracker.stop(false)
-        Thread.sleep(100)
+        Thread.sleep(fileSystemPause)
         val someFile2 = tempDir.createFile("someFile2")
         val someFile3 = tempDir.createFile("someFile3")
-        testAsync.assertEvent("files changed") // Higher timeout
+        Thread.sleep(fileSystemPause) // Small pause to allow filesystem watcher to give away events.
+        // Pause is less then debounce, so events must be grouped.
+        testAsync.assertEvent("files changed", timeoutMs = fileSystemPause * 4) // Higher timeout, because of debounce
         testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
         testAsync.assertEvent("file ${someFile2.absolutePath} has been changed")
         testAsync.assertEvent("file ${someFile3.absolutePath} has been changed")
@@ -164,9 +166,11 @@ class FileSystemTrackerTest {
     fun `test forcibly stop with debounce`() {
         // --- Prepare ---
         val tracker =
-            FileSystemTracker(debounceTimeoutMs = 400, recursive = true, trackCreations = true, trackChanges = true)
+            FileSystemTracker(debounceTimeoutMs = fileSystemPause * 2, recursive = true, trackCreations = true, trackChanges = true)
         tracker.init(tempDir, callerThreadTestExecutor) {
-            testAsync.sendEvent("files changed")
+            // Increased timeout since this event is sent immediately with forcible stop, and then, can be discarded
+            // after timeout because of file system pauses below.
+            testAsync.sendEvent("files changed", timeoutMs = fileSystemPause * 2)
             it.event?.forEach { testAsync.sendEvent("file ${it.absolutePath} has been changed") }
         }
 
@@ -181,7 +185,7 @@ class FileSystemTrackerTest {
         tempDir.createFile("someFile2")
         Thread.sleep(fileSystemPause) // Small pause to allow filesystem watcher to give away events.
         tempDir.createFile("someFile3")
-        testAsync.assertEvent("files changed") // Higher timeout
+        testAsync.assertEvent("files changed", timeoutMs = fileSystemPause * 3) // Higher timeout, because of upper pauses
         testAsync.assertEvent("file ${someFile.absolutePath} has been changed")
 
         testAsync.assertNoEvent()
