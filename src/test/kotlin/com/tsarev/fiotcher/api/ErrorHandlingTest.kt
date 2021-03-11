@@ -63,8 +63,7 @@ class ErrorHandlingTest {
         class ContinueException : RuntimeException()
 
         // Create listener.
-        manager.listenForKey(key)
-            .asyncTransform<File>(
+        val listenerHandle = manager.listenForKey(key).asyncTransform<File>(
                 // Break the chain if [StopException] occurred.
                 handleErrors = { if (it is StopException) throw it else it }
             ) { it, publish ->
@@ -100,6 +99,12 @@ class ErrorHandlingTest {
         // Check that no more events are sent.
         tempDir.createFile("stop.txt") { "first" }
         testAsync.assertNoEvent()
+
+        // Check that listener is stopped and failure exception is saved.
+        Assertions.assertTrue(listenerHandle.isStopped)
+        Assertions.assertTrue(listenerHandle.isStoppedExceptionally)
+        Assertions.assertTrue(listenerHandle.stoppedException is FiotcherException)
+        Assertions.assertTrue(listenerHandle.stoppedException?.cause is StopException)
 
         // Tear down.
         manager.stop(false).toCompletableFuture().get()
