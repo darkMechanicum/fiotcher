@@ -3,8 +3,8 @@ package com.tsarev.fiotcher.dflt.flows
 import com.tsarev.fiotcher.api.FiotcherException
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.*
-import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.ChainingListener
+import com.tsarev.fiotcher.internal.EventWithException
 import java.util.concurrent.*
 
 /**
@@ -86,29 +86,39 @@ class DelegatingAsyncChainListener<FromT : Any, ToT : Any, ListenerT>(
     }
 
     override fun onComplete() {
-        doStop(force = false)
+        // no-op
     }
 
     override fun doStop(force: Boolean, exception: Throwable?) = stopBrake.push {
         waitForOnNextCompletion(force)
             .thenCompose { loopForEventsCompletion(force) }
             .thenRun {
-                this@DelegatingAsyncChainListener.close()
                 this@DelegatingAsyncChainListener.subscription?.cancel()
                 if (exception != null) {
-                    completeExceptionally(exception)
-                    chained.doStop(force, exception)
+                    // Can't rely solely on [onComplete] method of chained, since we need to pass exception and force flag.
+                    chained.doStop(force, exception).whenComplete { _, _ ->
+                        this@DelegatingAsyncChainListener.close()
+                        completeExceptionally(exception)
+                    }
                 } else {
-                    complete(Unit)
-                    chained.doStop(force)
+                    // Can't rely solely on [onComplete] method of chained, since we need to pass force flag.
+                    chained.doStop(force).whenComplete { _, _ ->
+                        this@DelegatingAsyncChainListener.close()
+                        complete(Unit)
+                    }
                 }
             }
     }
 
     /**
-     * Spin loop that all events are processed.
+     * Spin loop, checking all events are processed.
      */
-    // TODO Can't remove within SubmissionPublisher implementation, since it does not support waiting.
+    // Can't remove within SubmissionPublisher implementation, since it does not support waiting.
+    // We need to know when we are stopped, so chained listener cannot be stopped wia [onComplete] method,
+    // since [Flow.Subscriptions] do not offer any information of remaining elements.
+    //
+    // Workaround can be implemented with counting elements down to the chain, that are passed but not processed,
+    // but such implementation will introduce additional cohesion between listeners.
     private fun loopForEventsCompletion(force: Boolean): CompletableFuture<Any> =
         if (force) CompletableFuture.completedFuture(Any())
         else runAsync(executor) {
@@ -121,7 +131,7 @@ class DelegatingAsyncChainListener<FromT : Any, ToT : Any, ListenerT>(
         }
 
     /**
-     * Wait while on next logic is executed.
+     * Wait until [onNext] logic is completed.
      */
     private fun waitForOnNextCompletion(force: Boolean): CompletableFuture<Any> =
         if (force) CompletableFuture.completedFuture(Any())

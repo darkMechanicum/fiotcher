@@ -2,8 +2,8 @@ package com.tsarev.fiotcher.dflt.flows
 
 import com.tsarev.fiotcher.api.Stoppable
 import com.tsarev.fiotcher.dflt.*
-import com.tsarev.fiotcher.internal.EventWithException
 import com.tsarev.fiotcher.internal.ChainingListener
+import com.tsarev.fiotcher.internal.EventWithException
 import java.util.concurrent.Executor
 import java.util.concurrent.Flow
 
@@ -38,11 +38,11 @@ open class CommonListener<ResourceT : Any>(
     }
 
     override fun onError(throwable: Throwable) {
-        doStop(exception = throwable)
+        doStop(force = true, exception = throwable)
     }
 
     override fun onComplete() {
-        doStop()
+        // no-op
     }
 
     override fun doStop(force: Boolean, exception: Throwable?) = stopBrake.push(force) {

@@ -69,7 +69,7 @@ fun <T : Any, S : Any> handleErrors(
         try {
             block(event)
         } catch (fiotcherCommon: FiotcherException) {
-            throw FiotcherException("Unexpected exception while transform processing", fiotcherCommon)
+            throw fiotcherCommon
         } catch (common: Throwable) {
             tryTransform(handleErrors, common, send)
         }
@@ -89,18 +89,20 @@ fun <T : Any> tryTransform(
 ) {
     if (handleErrors != null) {
         try {
-            // Handle or rethrow.
+            // Handle or resend.
             val transformedException = handleErrors.invoke(common)
             if (transformedException != null) {
                 send(transformedException.asFailure())
             }
         } catch (innerCause: Throwable) {
+            // Throw if transforming failed.
             throw FiotcherException("Exception while transforming another: [$common]", innerCause)
         }
     } else throw common
 }
 
-fun <T> runAsync(executor: Executor, block: () -> T): CompletableFuture<T> = CompletableFuture.supplyAsync(block, executor)
+fun <T> runAsync(executor: Executor, block: () -> T): CompletableFuture<T> =
+    CompletableFuture.supplyAsync(block, executor)
 
 /**
  * Check if OS is windows.

@@ -20,7 +20,7 @@ interface Stoppable {
     val isStopped: Boolean
 
     /**
-     * Exception, that cause stopping.
+     * Exception, that cause stopping, if any.
      */
     val stoppedException: Throwable?
 

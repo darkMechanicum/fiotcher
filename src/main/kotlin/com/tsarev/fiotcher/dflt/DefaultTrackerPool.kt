@@ -24,19 +24,6 @@ class DefaultTrackerPool<WatchT : Any>(
 ) : TrackerPool<WatchT>, StoppableBrakeMixin<Unit> {
 
     /**
-     * Mock no-op tracker.
-     */
-    private val mockTracker = object : Tracker<WatchT>(), StoppableBrakeMixin<Unit> {
-        override val stopBrake = Brake<Unit>().apply { pushCompleted(Unit) {} }
-        override fun doStop(force: Boolean, exception: Throwable?): CompletionStage<*> =
-            stopBrake.pushCompleted(Unit) {}
-
-        override fun run() = run { }
-        override fun doInit(executor: Executor, sendEvent: (EventWithException<InitialEventsBunch<WatchT>>) -> Unit) =
-            run {}
-    }
-
-    /**
      * Registerer trackers, by resource and key.
      */
     private val registeredTrackers = ConcurrentHashMap<Pair<WatchT, String>, Tracker<WatchT>>()
@@ -83,18 +70,24 @@ class DefaultTrackerPool<WatchT : Any>(
                     // If submission handle had interrupted us, so stop tracker.
                     if (currentThread.isInterrupted) {
                         doStopTracker(resourceBundle, key, true, tracker)
-                        return@submit mockTracker
+                        throw InterruptedException("Interrupted after tracker was started")
                     } else {
                         return@submit wrappedTracker
                     }
                 } else {
                     doStopTracker(resourceBundle, key, true, tracker)
-                    return@submit mockTracker
+                    throw InterruptedException("Interrupted before tracker was started")
                 }
             } catch (interrupt: InterruptedException) {
-                // Force shutdown if initialization was interrupted.
-                doStopTracker(resourceBundle, key, true, tracker)
-                throw interrupt
+                try {
+                    // Force shutdown if initialization was interrupted.
+                    doStopTracker(resourceBundle, key, true, tracker)
+                } finally {
+                    throw interrupt
+                }
+                // Exception for compiler satisfaction.
+                @Suppress("UNREACHABLE_CODE", "ThrowableNotThrown")
+                throw FiotcherException("Must not got here!")
             } catch (cause: Throwable) {
                 try {
                     // Force shutdown if initialization threw an exception.
@@ -102,9 +95,9 @@ class DefaultTrackerPool<WatchT : Any>(
                 } finally {
                     throw cause
                 }
-                // Exception for compiler.
+                // Exception for compiler satisfaction.
                 @Suppress("UNREACHABLE_CODE", "ThrowableNotThrown")
-                throw FiotcherException("Must not got here")
+                throw FiotcherException("Must not got here!")
             }
         }
     }
@@ -171,8 +164,7 @@ class DefaultTrackerPool<WatchT : Any>(
     /**
      * Do stop tracker, either from initializing failure, or from manual stopping.
      *
-     * This place must be the one, that removes registered tracker, except from the [stop] method
-     * of the pool.
+     * This place must be the only one, that removes registered tracker from the map.
      */
     private fun doStopTracker(
         resourceBundle: WatchT,
@@ -184,10 +176,11 @@ class DefaultTrackerPool<WatchT : Any>(
         tracker.stop(force).whenComplete { _, exception ->
             registeredTrackers.computeIfPresent(resourceBundle to key) { _, old ->
                 // In case of close [stopTracker] and [startTracker] calls.
+                // Situation can arise when multiple [whenComplete] blocks will be registered on tracker
+                // stopping brake and then, some of them can unintentionally remove wrong tracker.
                 if (old == tracker) null else old
             }
-            if (exception != null) resultHandle.completeExceptionally(exception)
-            else resultHandle.complete(Unit)
+            if (exception != null) resultHandle.completeExceptionally(exception) else resultHandle.complete(Unit)
         }
         return resultHandle
     }
