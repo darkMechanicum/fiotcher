@@ -15,26 +15,24 @@ import javax.xml.parsers.SAXParserFactory
 import kotlin.collections.HashMap
 
 /**
- * Handle changed files lines asynchronously.
- * For details see [ProcessorManager.listenForKey]
+ * Handle changed files lines.
  */
-fun FileProcessorManager.handleLines(key: String, linedListener: (String) -> Unit) = listenForKey(key)
-    .asyncTransform<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
-    .startListening {
-        val stream = getStreamOrNull(it)
+fun FileProcessorManager.handleLines(key: String, linedListener: (String) -> Unit) = startListening(key)
+{ bunch ->
+    bunch.forEach { file ->
+        val stream = getStreamOrNull(file)
         if (stream != null) {
-            val lines = with(Scanner(it)) { mutableListOf<String>().also { while (hasNextLine()) it += nextLine() } }
+            val lines = with(Scanner(file)) { mutableListOf<String>().also { while (hasNextLine()) it += nextLine() } }
             lines.forEach(linedListener)
         }
     }
+}
 
 /**
- * Handle changed files asynchronously.
- * For details see [ProcessorManager.listenForKey]
+ * Handle changed files.
  */
-fun FileProcessorManager.handleFiles(key: String, fileListener: (File) -> Unit) = listenForKey(key)
-    .asyncTransform<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
-    .startListening { fileListener(it) }
+fun FileProcessorManager.handleFiles(key: String, fileListener: (File) -> Unit) =
+    startListening(key) { it.forEach { file -> fileListener(file) } }
 
 /**
  * Simplified SAX event, got when element closing tag is encountered.
@@ -47,8 +45,7 @@ data class SaxEvent(
 )
 
 /**
- * Handle changed files asynchronously with SAX parser.
- * For details see [ProcessorManager.listenForKey].
+ * Handle changed files with SAX parser.
  *
  * <i>Note</i>: when using this parser sax element event is
  * send only when closing tag is reached. To alter this
@@ -63,14 +60,11 @@ fun FileProcessorManager.handleSax(
     saxListener: (SaxEvent) -> Unit
 ) {
     val defaultSaxParser = SAXParserFactory.newInstance().newSAXParser()!!
-    listenForKey(key)
-        .asyncTransform<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
-        .startListening(
-            handleErrors = {
-                if (it is SAXException) parsingErrorHandler?.let { handler -> handler(it) }
-                    .let { null } else it
-            }
-        ) { file ->
+    startListening(key, handleErrors = {
+        if (it is SAXException) parsingErrorHandler?.let { handler -> handler(it) }
+            .let { null } else it
+    }) { bunch ->
+        bunch.forEach { file ->
             val elements = HashMap<String, Deque<Map<String, String>>>()
             (customSaxParser ?: defaultSaxParser).parse(file, object : DefaultHandler() {
                 override fun startElement(uri: String?, localName: String?, qName: String?, attributes: Attributes) =
@@ -84,6 +78,7 @@ fun FileProcessorManager.handleSax(
             })
             elements.clear()
         }
+    }
 }
 
 private fun Attributes.toMap() = mutableMapOf<String, String>().apply {
@@ -93,8 +88,7 @@ private fun Attributes.toMap() = mutableMapOf<String, String>().apply {
 }
 
 /**
- * Handle changed files asynchronously with DOM parser.
- * For details see [ProcessorManager.listenForKey]
+ * Handle changed files with DOM parser.
  *
  * @param customDomParser custom dom parser to use
  */
@@ -104,9 +98,11 @@ fun FileProcessorManager.handleDom(
     domListener: (Document) -> Unit
 ) {
     val defaultDomParser = DocumentBuilderFactory.newInstance().newDocumentBuilder()!!
-    listenForKey(key)
-        .asyncTransform<File> { bunch, publisher -> bunch.forEach { publisher(it) } }
-        .startListening { val document = (customDomParser ?: defaultDomParser).parse(it); domListener(document) }
+    startListening(key) { bunch ->
+        bunch.forEach {
+            val document = (customDomParser ?: defaultDomParser).parse(it); domListener(document)
+        }
+    }
 }
 
 /**

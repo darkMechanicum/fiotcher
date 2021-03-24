@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id "org.jetbrains.kotlin.jvm" version "1.4.21"
     id 'jacoco'
+    id 'idea'
 }
 
 group 'com.tsarev'
@@ -20,11 +21,34 @@ jacoco {
 
 // Additional example source set.
 sourceSets {
+    // Online example of parsing test results.
     example {
         kotlin {
             compileClasspath += main.output
             runtimeClasspath += main.output
         }
+    }
+
+    // Simplified version.
+    simple {
+        kotlin {
+
+        }
+    }
+
+    // Tests for simplified version.
+    simpleTest {
+        kotlin {
+            compileClasspath += simple.output
+            runtimeClasspath += simple.output
+        }
+    }
+}
+
+// Convince IDEA that simpleTest is a test module.
+idea {
+    module {
+        testSourceDirs += sourceSets.simpleTest.kotlin.srcDirs
     }
 }
 
@@ -35,6 +59,10 @@ dependencies {
 
     exampleImplementation sourceSets.test.output
     exampleImplementation 'org.junit.platform:junit-platform-console-standalone:1.7.1'
+
+    simpleTestImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
+    simpleTestImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.0'
+    simpleTestRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
 }
 
 test {
@@ -57,3 +85,14 @@ task runExample(type: JavaExec) {
     classpath = sourceSets.example.runtimeClasspath
     main('com.tsarev.fiotcher.LiveJunitReportsParseKt')
 }
+
+// Add simple module testing after main.
+task simpleTests(type: Test) {
+    useJUnitPlatform()
+    description = 'Runs the simple module tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.simpleTest.output.classesDirs
+    classpath = sourceSets.simpleTest.runtimeClasspath
+    outputs.upToDateWhen { false }
+}
+check.dependsOn simpleTests
