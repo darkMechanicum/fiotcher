@@ -95,4 +95,3 @@ task simpleTests(type: Test) {
     classpath = sourceSets.simpleTest.runtimeClasspath
     outputs.upToDateWhen { false }
 }
-check.dependsOn simpleTests
