@@ -44,7 +44,5 @@ There are some limitations at the moment, that can be eliminated within current 
 1. Current `FileSystemTracker` implementation is based upon Java API `WatchService`, so if nested directories
    are created fast, so file can be lost. This can be fixed with fallback method, scanning with 
    plain BFS search at second thread and registering new directories in the watcher service.
-2. At now Trackers are all single threaded. This can be fixed by hiding asynchronous processing in trackers themselves,
-   or launching them multiple times.
    
 _A treasure lies beneath this endless abyss of code history_
